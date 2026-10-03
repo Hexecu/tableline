@@ -2,11 +2,14 @@
 
 A local desktop workspace for databases and grounded AI. Browse tables, run queries, keep SQL drafts, and review every write before applying it.
 
-[Italiano](README.it.md) · [Releases](https://github.com/Hexecu/tableline/releases) · [Contributing](CONTRIBUTING.md) · [Privacy](docs/PRIVACY.md) · [Security](SECURITY.md)
+[Italiano](README.it.md) · [Releases](https://github.com/Hexecu/tableline/releases/tag/v0.2.0) · [Contributing](CONTRIBUTING.md) · [Privacy](docs/PRIVACY.md) · [Security](SECURITY.md)
+
+
+![Tableline local SQLite demo with a grounded assistant answer](docs/screenshots/workspace-en.png)
 
 ## Try it
 
-Download the application and checksum from [GitHub Releases](https://github.com/Hexecu/tableline/releases). Release notes identify the supported architecture and signing status. The desktop distribution targets **macOS on Apple Silicon**. Linux and Windows installers are not currently released; CI checks source behavior on macOS and Linux.
+Download the application and checksum from [GitHub Releases](https://github.com/Hexecu/tableline/releases/tag/v0.2.0). Release notes identify the supported architecture and signing status. The desktop distribution targets **macOS on Apple Silicon**. Linux and Windows installers are not currently released; CI checks source behavior on macOS and Linux.
 
 Open **Local demo** to use a real SQLite database with 120 customers, 36 products, 1,000 orders and 1,000 order items. Its assistant is explicitly labeled as a deterministic demo and needs no LLM account. Switch the interface between **English, Italian, French, German and Spanish** in the language selector; the choice persists across restarts. Database names, SQL, model output and server diagnostics retain their original content.
 

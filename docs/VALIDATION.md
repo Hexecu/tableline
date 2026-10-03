@@ -27,7 +27,7 @@ The frozen source was checked on Apple Silicon macOS with Electron 44.5.1 and 51
 
 A separate synthetic SQLite benchmark checked 100,000 rows and ten ordered pages: 100-row page latency was 0.92–2.08 ms (median 1.55 ms), Unicode filtering 87.97 ms and aggregation 23.77 ms. These local backend measurements do not establish UI or production latency. Reproduce with `node scripts/benchmark.cjs`.
 
-Signing and packaged-app checks are recorded separately in the versioned release notes. Native credential acceptance and live cloud/provider accounts are not established by these results.
+The exact ZIP was extracted and checked: 35 locale, 17 broader, four draft and three actual-server desktop checks passed; native credential acceptance remained excluded. The notarized app passed strict Developer ID/Apple chain verification, ticket validation, Gatekeeper assessment, ASAR/source checks and full upstream notice hash checks. [Release validation metadata](releases/0.2.0-validation.json) records the artifact checksum and Apple submission. Native credential acceptance and live cloud/provider accounts are not established by these results.
 
 ## Reproduce the checks
 

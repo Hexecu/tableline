@@ -2,11 +2,14 @@
 
 Un workspace desktop locale per database e AI: esplora tabelle, esegui query, conserva le bozze SQL e revisiona ogni scrittura prima di applicarla.
 
-[English](README.md) · [Release](https://github.com/Hexecu/tableline/releases) · [Contribuire](CONTRIBUTING.md) · [Privacy](docs/PRIVACY.md) · [Sicurezza](SECURITY.md)
+[English](README.md) · [Release](https://github.com/Hexecu/tableline/releases/tag/v0.2.0) · [Contribuire](CONTRIBUTING.md) · [Privacy](docs/PRIVACY.md) · [Sicurezza](SECURITY.md)
+
+
+![Tableline con demo SQLite locale e risposta verificata sui dati](docs/screenshots/workspace-en.png)
 
 ## Provalo
 
-Scarica l'app e il checksum dalle [release GitHub](https://github.com/Hexecu/tableline/releases). Le note indicano architettura e stato di firma. La distribuzione desktop è per **macOS su Apple Silicon**; non vengono ancora distribuiti installer Linux o Windows. La CI verifica il sorgente su macOS e Linux.
+Scarica l'app e il checksum dalle [release GitHub](https://github.com/Hexecu/tableline/releases/tag/v0.2.0). Le note indicano architettura e stato di firma. La distribuzione desktop è per **macOS su Apple Silicon**; non vengono ancora distribuiti installer Linux o Windows. La CI verifica il sorgente su macOS e Linux.
 
 Apri **Demo locale**: SQLite contiene 120 clienti, 36 prodotti, 1.000 ordini e 1.000 righe ordine. È un vero file locale. L'assistente della demo è dichiarato deterministico e funziona senza un account LLM.
 

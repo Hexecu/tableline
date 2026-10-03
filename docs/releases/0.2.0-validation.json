@@ -1,0 +1,226 @@
+{
+  "version": "0.2.0",
+  "checkedAt": "2026-10-03T23:24:25.628Z",
+  "platform": "macOS",
+  "arch": "arm64",
+  "electronVersion": "44.5.1",
+  "languages": [
+    "en",
+    "it",
+    "fr",
+    "de",
+    "es"
+  ],
+  "messagesPerLanguage": 517,
+  "artifact": {
+    "filename": "Tableline-0.2.0-mac-arm64.zip",
+    "sha256": "3b400a53d50a29d51bfdc4bcf05e085893a66aa9d0af8166314346ace56d423d",
+    "asarSha256": "cd82198d6389f5de83f75453e8f05b299e8c36b96261a064d5a5ba1d755378cf"
+  },
+  "signature": {
+    "identity": "Developer ID Application: Davide Leopardi (5LJW72Z2B5)",
+    "teamId": "5LJW72Z2B5",
+    "hardenedRuntime": true,
+    "entitlements": [
+      "com.apple.security.cs.allow-jit"
+    ]
+  },
+  "notarization": {
+    "status": "Accepted",
+    "submissionId": "3c8bf793-bce8-4997-9d09-4a92d708ac06",
+    "cdhash": "ee658eebf9c64732248b464b5d7a97b64b2af539",
+    "ticketStapled": true,
+    "ticketValidated": true,
+    "gatekeeperSource": "Notarized Developer ID"
+  },
+  "sourceMatches": true,
+  "productionFiles": [
+    {
+      "path": "electron/ai-import.cjs",
+      "sha256": "38f2d8ec2a75eb9fc8c91c8eed03f040e3d0921ec5aa193e5793591aa75fd2ce"
+    },
+    {
+      "path": "electron/ai-vault.cjs",
+      "sha256": "9a2b8950f79fdc9184fba9f304aa14ada5eb937695f6c7312adb63309f71c4b4"
+    },
+    {
+      "path": "electron/ai.cjs",
+      "sha256": "f501fbd70a4a1f9fc62591f0ab4c5d84f111c9e4224767601b8ea068f48953a7"
+    },
+    {
+      "path": "electron/assistant.cjs",
+      "sha256": "29b5de21fe4d0e8dbe074bafabe32c081c13e11e062df73275010f83e2df8dcf"
+    },
+    {
+      "path": "electron/database.cjs",
+      "sha256": "18c4bcfb53cb5fec711bbc2eeb5ecf8f941046ba8eb525e954b363bc39ca51a1"
+    },
+    {
+      "path": "electron/drivers/demo-fixture.cjs",
+      "sha256": "cdc71075ced43fc1f9f57d49d05ab9a8f301e145107804f59422c0fb731ddc7f"
+    },
+    {
+      "path": "electron/drivers/document.cjs",
+      "sha256": "29c7730052832ee89681a31c7792e8210379575a15824269dc02c1ed3c6434fc"
+    },
+    {
+      "path": "electron/drivers/sql.cjs",
+      "sha256": "19ce74a5eb83ef7cea07f28c35e51e4a1269ac3773fc0b0b501d07ea3d2cfe75"
+    },
+    {
+      "path": "electron/drivers/sqlite-worker.cjs",
+      "sha256": "269ed415ad992d84a00f4e6956a83ea3a549afe338c23078861f8c6bb8957a5c"
+    },
+    {
+      "path": "electron/drivers/sqlite.cjs",
+      "sha256": "dec7bc8990a97d0e9142c37297391b0142dafdc93d3f594d08fb5ead7b66dfa5"
+    },
+    {
+      "path": "electron/drivers/write-preview.cjs",
+      "sha256": "f13a72f2948ba44b0ea81e2f3e8c0f481ead360317bc962c00c321023df9d923"
+    },
+    {
+      "path": "electron/main.cjs",
+      "sha256": "bc8734b551dbe64b2fc2a7436c4feff6750985c4192b08c2f178d6dafa0bac59"
+    },
+    {
+      "path": "electron/menu.cjs",
+      "sha256": "08a460f402394c158ecdb49b1f3b6925ee0051865935965ac045ccf0e1d6c93a"
+    },
+    {
+      "path": "electron/preload.cjs",
+      "sha256": "056a1ed4fc17ccea1ddcad3ffe69fabb97d9306eb58a7a750f7bb1d723f2a789"
+    },
+    {
+      "path": "electron/runtime-security.cjs",
+      "sha256": "8a222635f035339094d0f4e077cf276bf68625547652f3b082cbb256dbdbad02"
+    },
+    {
+      "path": "electron/shutdown-guard.cjs",
+      "sha256": "4caced384152a2c6c86a1c6274dac14ac2bdfafa321203fbddceac6cda40125a"
+    },
+    {
+      "path": "electron/sql-guard.cjs",
+      "sha256": "ad8abc419787fa1f1322e34c6b18e313c843d1584cbcf18a89abb873883d551a"
+    },
+    {
+      "path": "dist/assets/index-9PRL1SuT.css",
+      "sha256": "db2e5fe7f02a267c80fd8bc59fc15ed4532b09f5b76e1b651a2ae5f48a4e2966"
+    },
+    {
+      "path": "dist/assets/index-DBcxb1u8.js",
+      "sha256": "d0c574aaa14edf3dee3b6aa88468fb9551483399897b27ca54a98ce9fa3d437d"
+    },
+    {
+      "path": "dist/index.html",
+      "sha256": "51566a61b70436678602a5f307f5c1fa030c0abdf498d2cda746fbbc40f47f31"
+    },
+    {
+      "path": "assets/electron-notices.json",
+      "sha256": "09627793df8d4df6c99c2872c67442fbe3950fbef32740a7ca215357855e6cd5"
+    },
+    {
+      "path": "assets/entitlements.mac.plist",
+      "sha256": "325f21587e76d3bf208b6d577bad7061702c445ff5c6be9164fac75047f7cfaf"
+    },
+    {
+      "path": "assets/icon.png",
+      "sha256": "71a032e7943539f71c104b57773cea26ef4de2aa74410d38733c76d97dbcfd2f"
+    },
+    {
+      "path": "assets/icon.svg",
+      "sha256": "791f67c66a92a54c2d9a197bfefb508386b4d1c90c78da9a8561a724f7e35600"
+    },
+    {
+      "path": "locales/de.json",
+      "sha256": "4dd0914dc9b0c205aca6b67ef01cff5ac93d8e303a7b438e019c9fc6231330bb"
+    },
+    {
+      "path": "locales/en.json",
+      "sha256": "4421abf899c42176a7e35c41803f04849a56717feadbdededcb16741727b31cf"
+    },
+    {
+      "path": "locales/es.json",
+      "sha256": "60d4dde4a25d9ba1da000362922f57d8aae32e5c6a6ac2057b377820560f1d27"
+    },
+    {
+      "path": "locales/fr.json",
+      "sha256": "8fc0e28c6a969ef0a14bbcd3a5eb8aa5697d5006c6430e5e3327ccb8e13f900f"
+    },
+    {
+      "path": "locales/it.json",
+      "sha256": "1744552d6319e02be5703799319d66261a9f9c924b11b3f56017164f27a3c4fb"
+    },
+    {
+      "path": "locales/runtime.d.mts",
+      "sha256": "d902c974ffaf50d885e1674cb71281471ca6021eaaef5eac0c71b33f0e045c51"
+    },
+    {
+      "path": "locales/runtime.mjs",
+      "sha256": "315b94b1f5d51863e3aeca6bd6b38760c412bd3f9c666353bcde71d638cf719a"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "c11d686accba95dc24913f63d76f1a4fc7617cba4ecee9bcf1b63e339d0f1c19"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "8000cc6d455343051946df985efb74b450ed17b4be6e604baf63ea9c4ddd3674"
+    }
+  ],
+  "redistributedNotices": [
+    {
+      "path": "Contents/Resources/licenses/LICENSE.electron.txt",
+      "bytes": 1096,
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+    },
+    {
+      "path": "Contents/Resources/licenses/LICENSES.chromium.html",
+      "bytes": 20111209,
+      "sha256": "a62dabd1c6ef1327365b2a3fdffb806222684a746dcb8f4afd1c1f690eba5535"
+    }
+  ],
+  "checks": {
+    "unit": {
+      "passed": 232,
+      "failed": 0,
+      "skipped": 2
+    },
+    "sourceAndPackagedLocales": {
+      "passedEach": 35,
+      "failed": 0,
+      "nativeCredentialCalls": 0
+    },
+    "packagedDesktop": {
+      "passed": 17,
+      "excluded": 1,
+      "failed": 0,
+      "overallExit": 1,
+      "exclusion": "Native credential authorization not enabled"
+    },
+    "packagedDrafts": {
+      "passed": 4
+    },
+    "packagedServerDesktop": {
+      "passed": 3
+    },
+    "actualServerIntegration": {
+      "passed": 5,
+      "engines": [
+        "PostgreSQL 16",
+        "MySQL 8.4",
+        "MongoDB 8",
+        "Redis 7",
+        "ClickHouse 25.8"
+      ]
+    },
+    "productionDependencyAdvisories": 0,
+    "developmentHighAdvisories": 8
+  },
+  "limits": [
+    "Native credential acceptance not certified",
+    "Live cloud accounts and model inference not certified",
+    "Only Apple Silicon macOS binary distributed",
+    "No production latency or SLA claim"
+  ]
+}
