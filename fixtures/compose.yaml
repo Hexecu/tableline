@@ -1,0 +1,24 @@
+name: tableline-fixtures
+services:
+  redis:
+    image: redis:7
+    container_name: tableline-fixture-redis
+    ports: ["127.0.0.1:56388:6379"]
+    labels:
+      tableline.qa: isolated
+  mongo:
+    image: mongo:8.0
+    container_name: tableline-fixture-mongo
+    ports: ["127.0.0.1:57028:27017"]
+    labels:
+      tableline.qa: isolated
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    container_name: tableline-fixture-clickhouse
+    ports: ["127.0.0.1:58138:8123"]
+    environment:
+      CLICKHOUSE_USER: tableline_qa
+      CLICKHOUSE_PASSWORD: "" # Isolated loopback fixture: desktop QA needs no Keychain access.
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    labels:
+      tableline.qa: isolated

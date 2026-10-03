@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible problem with synthetic data.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use synthetic data. Remove credentials, private hostnames and personal records from logs and screenshots. For vulnerabilities, follow SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version and installation
+      placeholder: "0.2.0, release download or source commit"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and architecture
+      placeholder: "macOS version / Apple Silicon"
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: Interface language
+      placeholder: "English / Italiano / Français / Deutsch / Español"
+  - type: input
+    id: integration
+    attributes:
+      label: Database or AI provider and version
+      placeholder: "SQLite demo / PostgreSQL 16 / local Ollama"
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal synthetic query or fixture when useful.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed result
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Paste a short error or attach screenshots after checking them for private data.

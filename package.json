@@ -1,0 +1,102 @@
+{
+  "name": "tableline",
+  "version": "0.2.0",
+  "private": true,
+  "description": "A fast local database workspace with grounded AI",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "build": "tsc --noEmit && vite build",
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "test:e2e": "node scripts/e2e.cjs",
+    "package": "node scripts/package.cjs",
+    "release:macos": "node scripts/release-macos.cjs",
+    "release:check": "node scripts/release-macos.cjs --check",
+    "verify:package": "node scripts/verify-package.cjs",
+    "test:i18n": "node --test tests/i18n.test.cjs",
+    "test:e2e:locales": "node scripts/e2e-locales.cjs"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "lucide-react": "^0.577.0",
+    "pg": "^8.16.3",
+    "mysql2": "^3.15.0",
+    "@databricks/sql": "^2.2.0",
+    "mssql": "^12.0.0",
+    "mongodb": "^6.20.0",
+    "redis": "^5.8.0",
+    "@clickhouse/client": "^1.12.1",
+    "@aws-sdk/client-bedrock": "^3.1145.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1145.0",
+    "@aws-sdk/credential-providers": "^3.1145.0",
+    "google-auth-library": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/node": "^24.0.0",
+    "electron": "44.5.1",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.3",
+    "vite": "8.3.2",
+    "playwright": "^1.56.0"
+  },
+  "build": {
+    "appId": "local.tableline.desktop",
+    "productName": "Tableline",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "locales/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.png",
+      "identity": "-",
+      "target": "dir",
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "strictVerify": true,
+      "timestamp": "http://timestamp.apple.com/ts01",
+      "notarize": false
+    },
+    "afterPack": "scripts/prepare-signing.cjs",
+    "win": {
+      "target": "dir",
+      "icon": "assets/icon.png"
+    },
+    "linux": {
+      "target": "dir",
+      "category": "Development",
+      "icon": "assets/icon.png"
+    }
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "license": "MIT",
+  "overrides": {
+    "basic-ftp": "^6.2.1",
+    "uuid": "^11.1.1"
+  },
+  "author": "Davide Leopardi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hexecu/tableline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hexecu/tableline/issues"
+  },
+  "homepage": "https://github.com/Hexecu/tableline#readme"
+}

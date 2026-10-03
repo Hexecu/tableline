@@ -1,0 +1,26 @@
+name: Feature proposal
+description: Describe the workflow a change would improve.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Workflow and problem
+      description: Explain the concrete action and what gets in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: input
+    id: integration
+    attributes:
+      label: Relevant database, provider or interface language
+  - type: textarea
+    id: validation
+    attributes:
+      label: How it could be checked
+      description: Prefer a small fixture or observable before/after behavior.
