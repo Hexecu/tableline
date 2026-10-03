@@ -100,3 +100,9 @@ database or LLM credentials work. Never put secrets in release logs or source.
 
 The release/signing strategy is adapted from Branchline under MIT; attribution
 is retained in `THIRD_PARTY_NOTICES.md`.
+
+## Redistributed notices
+
+The `afterExtract` hook preserves Electron’s MIT license and the complete Chromium notices inside the application before signing; `afterPack` and the package verifier check them. `assets/electron-notices.json` pins the expected version, architecture and notice hashes from the official Electron archive, whose checksum is checked against the locked Electron package. An Electron upgrade or a different architecture requires reviewing and updating this notice manifest. Missing or changed notices block the release.
+
+Build from a fresh checkout and install dependencies outside synchronized folders when the local synchronization service produces duplicate or deferred files. Do not copy an existing `node_modules` tree into release staging. The generated production files must match the reviewed source before distribution.

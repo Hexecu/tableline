@@ -15,7 +15,7 @@ Branchline configuration, repositories, user data and credentials are not distri
 
 ## Packaged dependencies
 
-The application uses the following main open-source packages. Their source distributions retain their respective license and notice files in `node_modules`; the Electron distribution retains its Chromium and dependency license notices.
+The application uses the following main open-source packages. Their source distributions retain their respective license and notice files in `node_modules`; the macOS app retains the complete Electron MIT and Chromium notices in `Contents/Resources/licenses/`, copied from the same upstream distribution before signing.
 
 | Component | License |
 | --- | --- |

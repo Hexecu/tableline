@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "electronVersion": "44.5.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "upstreamArchiveSha256": "1d75703019bb16461ae65f3081d7e6f5c0b11e901d0ccb5c343bcf7bcdd6435c",
+  "licenses": {
+    "LICENSE.electron.txt": {
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d",
+      "bytes": 1096
+    },
+    "LICENSES.chromium.html": {
+      "sha256": "a62dabd1c6ef1327365b2a3fdffb806222684a746dcb8f4afd1c1f690eba5535",
+      "bytes": 20111209
+    }
+  }
+}

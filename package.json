@@ -80,7 +80,8 @@
       "target": "dir",
       "category": "Development",
       "icon": "assets/icon.png"
-    }
+    },
+    "afterExtract": "scripts/preserve-electron-notices.cjs"
   },
   "engines": {
     "node": ">=22.13.0"

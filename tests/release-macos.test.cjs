@@ -14,6 +14,7 @@ const {
   installedIdentity,
   signedIdentity,
   gatekeeperAccepted,
+  verifySignedBundle,
 } = require("../scripts/release-macos.cjs");
 
 // All certificate/tool responses below are synthetic. No signing, Keychain
@@ -21,6 +22,9 @@ const {
 const root = path.resolve(__dirname, "..");
 const identity = "Developer ID Application: Tableline QA (ABCDE12345)";
 const hash = "A".repeat(40);
+const cdhash = "b".repeat(40);
+const archiveSha256 = "c".repeat(64);
+const submissionId = "11111111-1111-1111-1111-111111111111";
 const environment = {
   TABLELINE_SIGN_IDENTITY: identity,
   TABLELINE_NOTARY_PROFILE: "tableline-qa",
@@ -28,7 +32,7 @@ const environment = {
 const signature =
   `Authority=${identity}\nTeamIdentifier=ABCDE12345\n` +
   "CodeDirectory v=20500 size=644 flags=0x10000(runtime) hashes=9+7 location=embedded\n" +
-  "Timestamp=Oct 2, 2026 at 12:00:00";
+  `Timestamp=Oct 2, 2026 at 12:00:00\nCDHash=${cdhash}`;
 
 test("release preflight rejects missing, foreign, ambiguous and non-Developer-ID identities", () => {
   assert.throws(() => configuration({}, "darwin", "arm64"), /Set TABLELINE/);
@@ -169,9 +173,10 @@ function loadWithMocks(home, outcome) {
     )
       stdout = args.includes("-c") ? leaf : appleRoot;
     else if (executable === "/usr/bin/codesign" && args.includes("-d"))
-      stderr = signature;
+      stderr = outcome === "wrong-signature" ? signature.replace(identity, "Developer ID Application: Other (OTHER12345)") : signature;
     else if (executable === "/usr/sbin/spctl" && outcome !== "assessment-failed")
-      stderr = `Tableline.app: accepted\nsource=${outcome === "wrong-trust" ? "Unnotarized Developer ID" : "Notarized Developer ID"}\norigin=${identity}`;
+      stderr = `Tableline.app: accepted\nsource=${outcome === "wrong-trust" ? "Unnotarized Developer ID" : "Notarized Developer ID"}` +
+        (outcome === "no-origin" ? "" : `\norigin=${outcome === "wrong-origin" ? "Developer ID Application: Other (OTHER12345)" : identity}`);
     else if (executable === "/usr/bin/ditto")
       fs.writeFileSync(
         args.at(-1),
@@ -183,14 +188,31 @@ function loadWithMocks(home, outcome) {
           ? "not-json"
           : JSON.stringify({
               status: outcome === "Invalid" ? "Invalid" : "Accepted",
-              id: outcome === "invalid-id" ? "untrusted-text" : "11111111-1111-1111-1111-111111111111",
+              id: outcome === "invalid-id" ? "untrusted-text" : submissionId,
             });
+    else if (args[0] === "notarytool" && args[1] === "info")
+      stdout = outcome === "info-bad-json" ? "not-json" : JSON.stringify({
+        id: outcome === "info-wrong-id" ? "22222222-2222-2222-2222-222222222222" : submissionId,
+        status: outcome === "info-invalid" ? "Invalid" : "Accepted",
+      });
+    else if (args[0] === "notarytool" && args[1] === "log")
+      stdout = outcome === "log-bad-json" ? "not-json" : JSON.stringify({
+        jobId: outcome === "log-wrong-job" ? "22222222-2222-2222-2222-222222222222" : submissionId,
+        status: outcome === "log-invalid" ? "Invalid" : "Accepted",
+        ticketContents: [{
+          path: outcome === "ticket-other-executable" ? "submission.zip/Tableline.app/Contents/MacOS/Helper" : "submission.zip/Tableline.app/Contents/MacOS/Tableline",
+          digestAlgorithm: "SHA-256",
+          cdhash: outcome === "ticket-other-hash" ? "d".repeat(40) : cdhash,
+          arch: outcome === "ticket-other-arch" ? "x86_64" : "arm64",
+        }],
+      });
     else if (
       (outcome === "staple-failed" &&
         args[0] === "stapler" &&
         args[1] === "staple") ||
       (outcome === "ticket-failed" && args[0] === "stapler" && args[1] === "validate") ||
-      (outcome === "assessment-failed" && executable === "/usr/sbin/spctl")
+      (outcome === "assessment-failed" && executable === "/usr/sbin/spctl") ||
+      (outcome === "requirement-failed" && executable === "/usr/bin/codesign" && args.includes("-R"))
     ) {
       status = 1;
       stderr = secret;
@@ -206,7 +228,7 @@ function loadWithMocks(home, outcome) {
         assert.equal(options.arch, "arm64");
         assert.ok(bundle.startsWith(home + path.sep));
         if (outcome === "source-mismatch") throw new Error("Archive source mismatch: dist/index.html");
-        return { sourceMatches: true };
+        return { sourceMatches: true, archiveSha256: outcome === "archive-mismatch" ? "d".repeat(64) : archiveSha256 };
       },
     },
     "./package.cjs": {
@@ -217,7 +239,7 @@ function loadWithMocks(home, outcome) {
         run("mock-builder", [], { env });
         const bundle = path.join(outputDir, "mac-arm64", "Tableline.app");
         fs.mkdirSync(bundle, { recursive: true });
-        return { bundle };
+        return { bundle, verification: { sourceMatches: true, archiveSha256 } };
       },
     },
   };
@@ -398,7 +420,7 @@ test("offline check does not build, sign, submit, or call application crypto", (
 });
 
 test("Gatekeeper result must establish notarized Developer ID trust for the selected identity", () => {
-  const config = { identity };
+  const config = { identity, teamId: "ABCDE12345" };
   const accepted = `Tableline.app: accepted\nsource=Notarized Developer ID\norigin=${identity}`;
   gatekeeperAccepted(accepted, config);
   for (const response of [
@@ -406,6 +428,81 @@ test("Gatekeeper result must establish notarized Developer ID trust for the sele
     accepted.replace("Notarized Developer ID", "Unnotarized Developer ID"),
     accepted.replace(identity, "Developer ID Application: Other (OTHER12345)"),
   ]) assert.throws(() => gatekeeperAccepted(response, config), /did not confirm/);
+  const withoutOrigin = `Tableline.app: accepted\nsource=Notarized Developer ID`;
+  assert.throws(() => gatekeeperAccepted(withoutOrigin, config), /did not confirm/);
+  const bundle = path.join(os.tmpdir(), "Tableline.app"), calls = [];
+  const proof = verifySignedBundle((label, executable, args) => {
+    calls.push({ executable, args });
+    return { stdout: "", stderr: args.includes("-d") ? signature : "" };
+  }, bundle, config);
+  assert.ok(calls.some((call) => call.args.includes("--strict") && call.args.includes("-R")));
+  gatekeeperAccepted(withoutOrigin, config, { bundle, signatureProof: proof });
+  for (const invalid of [
+    { bundle, signatureProof: {} },
+    { bundle: path.join(os.tmpdir(), "Other.app"), signatureProof: proof },
+  ]) assert.throws(() => gatekeeperAccepted(withoutOrigin, config, invalid), /did not confirm/);
+  assert.throws(() => gatekeeperAccepted(withoutOrigin, { ...config, teamId: "OTHER12345" }, { bundle, signatureProof: proof }), /did not confirm/);
+  assert.throws(() => gatekeeperAccepted(`${withoutOrigin}\norigin=Developer ID Application: Other (OTHER12345)`, config, { bundle, signatureProof: proof }), /did not confirm/);
+  assert.throws(() => verifySignedBundle((_label, _file, args) => {
+    if (args.includes("-R")) throw new Error("Cryptographic requirement rejected");
+    return { stdout: "", stderr: signature };
+  }, bundle, config), /requirement rejected/);
+});
+
+for (const outcome of [
+  "Accepted", "no-origin", "info-invalid", "info-wrong-id", "info-bad-json",
+  "log-invalid", "log-wrong-job", "log-bad-json", "ticket-other-hash",
+  "ticket-other-executable", "ticket-other-arch", "ticket-failed", "source-mismatch",
+  "archive-mismatch", "wrong-signature", "requirement-failed", "wrong-trust", "wrong-origin", "assessment-failed",
+]) test(`existing notarized bundle finalization ${outcome} reruns all gates without signing or submitting`, () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "tableline-finalize-test-"));
+  try {
+    const bundle = path.join(home, "staging", "Tableline.app");
+    fs.mkdirSync(bundle, { recursive: true });
+    const { service, calls } = loadWithMocks(home, outcome);
+    let result, error;
+    try {
+      result = service.finalizeMac({ env: environment, bundle, submissionId, expectedArchiveSha256: archiveSha256 });
+    } catch (failure) { error = failure; }
+    assert.ok(calls.some((call) => call.args[0] === "notarytool" && call.args[1] === "info"));
+    assert.ok(!calls.some((call) => call.executable === "mock-builder" || call.executable === "/usr/bin/security" ||
+      call.args.includes("--sign") || (call.args[0] === "notarytool" && call.args[1] === "submit") ||
+      (call.args[0] === "stapler" && call.args[1] === "staple")));
+    const finalArchive = calls.find((call) => call.executable === "/usr/bin/ditto" && call.args.at(-1).endsWith("final.zip"));
+    const output = path.join(home, "Library", "Caches", "Tableline", "releases", "v0.2.0");
+    if (outcome === "Accepted" || outcome === "no-origin") {
+      assert.equal(error, undefined);
+      assert.ok(finalArchive);
+      assert.equal(result.submissionId, submissionId);
+      assert.equal(result.archiveSha256, archiveSha256);
+      assert.equal(result.cdhash, cdhash);
+      assert.ok(fs.existsSync(result.zip));
+      assert.ok(fs.existsSync(result.checksum));
+    } else {
+      assert.ok(error);
+      assert.equal(finalArchive, undefined);
+      assert.deepEqual(fs.readdirSync(output), []);
+    }
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
+});
+
+test("finalization refuses malformed identity evidence and already published assets before Apple lookup", () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "tableline-finalize-input-"));
+  try {
+    const bundle = path.join(home, "staging", "Tableline.app");
+    fs.mkdirSync(bundle, { recursive: true });
+    for (const args of [{ submissionId: "--other", expectedArchiveSha256: archiveSha256 }, { submissionId, expectedArchiveSha256: "bad" }]) {
+      const { service, calls } = loadWithMocks(home, "Accepted");
+      assert.throws(() => service.finalizeMac({ env: environment, bundle, ...args }), /valid submission ID/);
+      assert.equal(calls.length, 0);
+    }
+    const first = loadWithMocks(home, "Accepted");
+    const released = first.service.finalizeMac({ env: environment, bundle, submissionId, expectedArchiveSha256: archiveSha256 });
+    const second = loadWithMocks(home, "Accepted");
+    assert.throws(() => second.service.finalizeMac({ env: environment, bundle, submissionId, expectedArchiveSha256: archiveSha256 }), /already exist/);
+    assert.equal(second.calls.length, 0);
+    assert.equal(fs.readFileSync(released.zip, "utf8"), "stapled-zip");
+  } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
 
 test("completed release artifacts cannot be overwritten", () => {

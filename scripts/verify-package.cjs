@@ -63,6 +63,38 @@ function verifyArchive(archive, plist, { sourceRoot = root, archiveAPI = asar } 
   return { version: packaged.version, sourceMatches: true, files, languageCatalogs: LANGUAGES };
 }
 
+function electronLicensesDirectory(bundle, { create = false } = {}) {
+  for (const relative of ["", "Contents", "Contents/Resources"])
+    if (!fs.lstatSync(path.join(bundle, relative)).isDirectory())
+      throw new Error("Electron notice bundle ancestors must be real directories, not symlinks.");
+  const licenses = path.join(bundle, "Contents", "Resources", "licenses");
+  if (create && !fs.existsSync(licenses)) fs.mkdirSync(licenses);
+  if (!fs.lstatSync(licenses).isDirectory())
+    throw new Error("Packaged Electron notices must be a directory inside the application.");
+  if (!fs.realpathSync(licenses).startsWith(fs.realpathSync(bundle) + path.sep))
+    throw new Error("Electron notices resolve outside the application bundle.");
+  return licenses;
+}
+
+function verifyElectronNotices(bundle, { sourceRoot = root, arch = process.arch, electronVersion } = {}) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(sourceRoot, "assets", "electron-notices.json"), "utf8"));
+  const expected = JSON.parse(fs.readFileSync(path.join(sourceRoot, "package.json"), "utf8")).devDependencies?.electron;
+  if (manifest.version !== 1 || manifest.platform !== "darwin" || manifest.arch !== arch ||
+      manifest.electronVersion !== expected || electronVersion !== expected ||
+      !/^[a-f\d]{64}$/.test(manifest.upstreamArchiveSha256))
+    throw new Error("Packaged Electron version/architecture does not match the reviewed notice snapshot.");
+  const licensesDir = electronLicensesDirectory(bundle);
+  const licenses = ["LICENSE.electron.txt", "LICENSES.chromium.html"].map((filename) => {
+    const fullPath = path.join(licensesDir, filename);
+    if (!fs.lstatSync(fullPath).isFile()) throw new Error(`Missing regular packaged Electron notice: ${filename}`);
+    const content = fs.readFileSync(fullPath), snapshot = manifest.licenses?.[filename];
+    if (!snapshot || !content.length || content.length !== snapshot.bytes || hash(content) !== snapshot.sha256)
+      throw new Error(`Packaged Electron notice does not match reviewed upstream bytes: ${filename}`);
+    return { path: `Contents/Resources/licenses/${filename}`, bytes: content.length, sha256: snapshot.sha256 };
+  });
+  return { electronVersion, upstreamArchiveSha256: manifest.upstreamArchiveSha256, licenses };
+}
+
 function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, platform = process.platform, arch = process.arch } = {}) {
   if (platform !== "darwin") throw new Error("macOS package verification requires macOS.");
   if (!["arm64", "x64"].includes(arch)) throw new Error("Unsupported package architecture.");
@@ -75,6 +107,8 @@ function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, plat
   if (!fs.statSync(path.join(contents, "_CodeSignature", "CodeResources")).isFile())
     throw new Error("The app bundle has no sealed code resources.");
   const plist = JSON.parse(run("/usr/bin/plutil", ["-convert", "json", "-o", "-", path.join(contents, "Info.plist")], options));
+  const framework = JSON.parse(run("/usr/bin/plutil", ["-convert", "json", "-o", "-", path.join(contents, "Frameworks", "Electron Framework.framework", "Resources", "Info.plist")], options));
+  const notices = verifyElectronNotices(app, { sourceRoot, arch, electronVersion: framework.CFBundleShortVersionString });
   if (plist.CFBundleExecutable !== "Tableline") throw new Error("Unexpected application executable.");
   run("/usr/bin/lipo", [path.join(contents, "MacOS", "Tableline"), "-verify_arch", arch === "x64" ? "x86_64" : arch], options);
   const iconName = plist.CFBundleIconFile;
@@ -86,7 +120,7 @@ function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, plat
   const archive = path.join(contents, "Resources", "app.asar");
   const checked = verifyArchive(archive, plist, { sourceRoot });
   return {
-    app, arch, ...checked,
+    app, arch, ...checked, ...notices,
     archiveSha256: hash(fs.readFileSync(archive)),
     signatureIntegrity: true, asarIntegrity: true,
     notarizationVerified: false,
@@ -105,4 +139,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { verifyPackage, verifyArchive, sourceFiles };
+module.exports = { verifyPackage, verifyArchive, sourceFiles, verifyElectronNotices, electronLicensesDirectory };
