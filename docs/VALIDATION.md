@@ -15,7 +15,7 @@ The frozen source was checked on Apple Silicon macOS with Electron 44.5.1 and 51
 
 | Check | Observed result |
 | --- | --- |
-| Unit tests | 231 passed; 0 failed; 2 opt-in database tests skipped |
+| Unit tests | 232 passed; 0 failed; 2 opt-in database tests skipped |
 | Catalog audit | 5 passed, included in the unit total |
 | Locale desktop checks | 35 passed; no renderer errors; zero native credential API calls |
 | Broad desktop checks | 17 passed; 1 native credential acceptance path excluded; nonzero overall exit |

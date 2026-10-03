@@ -95,6 +95,14 @@ function verifyElectronNotices(bundle, { sourceRoot = root, arch = process.arch,
   return { electronVersion, upstreamArchiveSha256: manifest.upstreamArchiveSha256, licenses };
 }
 
+function electronFrameworkVersion(plist) {
+  const version = plist?.CFBundleVersion;
+  if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version) ||
+      (Object.hasOwn(plist, "CFBundleShortVersionString") && plist.CFBundleShortVersionString !== version))
+    throw new Error("Electron framework has missing or inconsistent version metadata.");
+  return version;
+}
+
 function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, platform = process.platform, arch = process.arch } = {}) {
   if (platform !== "darwin") throw new Error("macOS package verification requires macOS.");
   if (!["arm64", "x64"].includes(arch)) throw new Error("Unsupported package architecture.");
@@ -108,7 +116,7 @@ function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, plat
     throw new Error("The app bundle has no sealed code resources.");
   const plist = JSON.parse(run("/usr/bin/plutil", ["-convert", "json", "-o", "-", path.join(contents, "Info.plist")], options));
   const framework = JSON.parse(run("/usr/bin/plutil", ["-convert", "json", "-o", "-", path.join(contents, "Frameworks", "Electron Framework.framework", "Resources", "Info.plist")], options));
-  const notices = verifyElectronNotices(app, { sourceRoot, arch, electronVersion: framework.CFBundleShortVersionString });
+  const notices = verifyElectronNotices(app, { sourceRoot, arch, electronVersion: electronFrameworkVersion(framework) });
   if (plist.CFBundleExecutable !== "Tableline") throw new Error("Unexpected application executable.");
   run("/usr/bin/lipo", [path.join(contents, "MacOS", "Tableline"), "-verify_arch", arch === "x64" ? "x86_64" : arch], options);
   const iconName = plist.CFBundleIconFile;
@@ -139,4 +147,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { verifyPackage, verifyArchive, sourceFiles, verifyElectronNotices, electronLicensesDirectory };
+module.exports = { verifyPackage, verifyArchive, sourceFiles, verifyElectronNotices, electronLicensesDirectory, electronFrameworkVersion };

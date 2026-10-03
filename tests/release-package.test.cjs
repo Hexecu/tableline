@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const crypto = require("node:crypto");
-const { verifyArchive, sourceFiles, verifyElectronNotices } = require("../scripts/verify-package.cjs");
+const { verifyArchive, sourceFiles, verifyElectronNotices, electronFrameworkVersion } = require("../scripts/verify-package.cjs");
 const preserveElectronNotices = require("../scripts/preserve-electron-notices.cjs");
 const { Arch } = require("builder-util");
 
@@ -107,6 +107,18 @@ function noticesFixture() {
   };
   return { root, output, bundle, context, manifest };
 }
+
+test("official Electron framework plist uses CFBundleVersion without a short version", () => {
+  // The official 44.5.1 framework has this version field and no short version.
+  const plist = JSON.parse('{"CFBundleIdentifier":"com.github.Electron.framework","CFBundleName":"Electron Framework","CFBundleVersion":"44.5.1"}');
+  assert.equal(Object.hasOwn(plist, "CFBundleShortVersionString"), false);
+  assert.equal(electronFrameworkVersion(plist), "44.5.1");
+  assert.equal(electronFrameworkVersion({ ...plist, CFBundleShortVersionString: "44.5.1" }), "44.5.1");
+  for (const invalid of [
+    {}, { CFBundleShortVersionString: "44.5.1" }, { CFBundleVersion: 44.5 },
+    { ...plist, CFBundleShortVersionString: "44.5.0" },
+  ]) assert.throws(() => electronFrameworkVersion(invalid), /version metadata/);
+});
 
 test("afterExtract preserves exact upstream Electron and Chromium notices before rename and signing", async () => {
   const f = noticesFixture();
