@@ -20,6 +20,8 @@ function mockStorage(overrides = {}) {
     encryptString: () => assert.fail("synchronous encryption must never run"),
     decryptString: () => assert.fail("synchronous decryption must never run"),
     isAsyncEncryptionAvailable: async () => true,
+    // Synthetic metadata only; tests never initialize an OS credential backend.
+    getSelectedStorageBackend: () => "gnome_libsecret",
     async encryptStringAsync(value) {
       const bytes = Buffer.from(value, "utf8");
       for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
@@ -336,10 +338,19 @@ test("async decrypt timeout preserves ciphertext and does not block other metada
   assertNoPlaintext(directory, [FIRST]);
 });
 
-test("Linux basic_text and unknown secure backend fail closed without encryption", async (t) => {
-  for (const backend of ["basic_text", "unknown"]) {
+test("synthetic secure Linux backend supports encrypted roundtrips without OS access", async (t) => {
+  const { vault, directory } = fixture(t, mockStorage(), { platform: "linux" });
+  assert.equal(await vault.available(), true);
+  await vault.set("ai-linux", { apiKey: FIRST });
+  assert.deepEqual(await vault.get("ai-linux"), { apiKey: FIRST });
+  assertNoPlaintext(directory, [FIRST]);
+});
+
+test("Linux basic_text, unknown, and missing secure backend fail closed without encryption", async (t) => {
+  for (const backend of ["basic_text", "unknown", undefined]) {
     const storage = mockStorage({
-      getSelectedStorageBackend: () => backend,
+      getSelectedStorageBackend:
+        backend === undefined ? undefined : () => backend,
       encryptStringAsync: async () =>
         assert.fail("unsafe Linux backend cannot encrypt"),
     });

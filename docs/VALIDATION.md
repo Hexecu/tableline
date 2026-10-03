@@ -15,7 +15,7 @@ The frozen source was checked on Apple Silicon macOS with Electron 44.5.1 and 51
 
 | Check | Observed result |
 | --- | --- |
-| Unit tests | 200 passed; 0 failed; 2 opt-in database tests skipped |
+| Unit tests | 201 passed; 0 failed; 2 opt-in database tests skipped |
 | Catalog audit | 5 passed, included in the unit total |
 | Locale desktop checks | 35 passed; no renderer errors; zero native credential API calls |
 | Broad desktop checks | 17 passed; 1 native credential acceptance path excluded; nonzero overall exit |
@@ -24,6 +24,8 @@ The frozen source was checked on Apple Silicon macOS with Electron 44.5.1 and 51
 | Actual MongoDB/Redis/ClickHouse servers | 3 passed |
 | Desktop access to MongoDB/Redis/ClickHouse | 3 passed |
 | Build and production dependency audit | Passed; zero production advisories |
+
+A separate synthetic SQLite benchmark checked 100,000 rows and ten ordered pages: 100-row page latency was 0.92–2.08 ms (median 1.55 ms), Unicode filtering 87.97 ms and aggregation 23.77 ms. These local backend measurements do not establish UI or production latency. Reproduce with `node scripts/benchmark.cjs`.
 
 Signing and packaged-app checks are recorded separately in the versioned release notes. Native credential acceptance and live cloud/provider accounts are not established by these results.
 
