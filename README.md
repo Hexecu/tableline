@@ -81,4 +81,6 @@ These commands create synthetic data in dedicated fixtures bound to loopback. `d
 
 ## License
 
-MIT. Tableline adapts provider integration code from [Branchline](https://github.com/Hexecu/branchline), with its copyright and license preserved in [third-party notices](THIRD_PARTY_NOTICES.md). It has its own code, visual assets and product identity. TablePlus is an independent product and is not affiliated with Tableline.
+Tableline's original source, documentation and assets are licensed under the [GNU General Public License, version 3 only](LICENSE) (`GPL-3.0-only`). See [COPYRIGHT](COPYRIGHT) for the copyright, warranty and source-availability notice. Contributions use the same license. Distributed modified versions must provide their Corresponding Source under GPLv3; private use and commercial use are allowed.
+
+The GPL transition starts with the source revision introducing this notice. Earlier versions, including v0.2.0, remain under their original MIT terms; their tags and release artifacts are unchanged. Third-party components retain their own licenses. Tableline adapts provider integration code from an earlier MIT snapshot of [Branchline](https://github.com/Hexecu/branchline), with its original copyright and complete MIT notice preserved in [third-party notices](THIRD_PARTY_NOTICES.md). TablePlus is an independent product and is not affiliated with Tableline.

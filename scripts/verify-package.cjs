@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 "use strict";
 
 // ASAR/signature checks adapted from Branchline (MIT), copyright (c) 2026
@@ -26,7 +29,7 @@ function sourceFiles(sourceRoot) {
     else throw new Error(`Unsupported source release entry: ${relative}`);
   }
   for (const folder of ["electron", "dist", "assets", "locales"]) walk(folder);
-  for (const filename of ["LICENSE", "THIRD_PARTY_NOTICES.md"]) walk(filename);
+  for (const filename of ["LICENSE", "COPYRIGHT", "THIRD_PARTY_NOTICES.md"]) walk(filename);
   return entries;
 }
 
@@ -43,9 +46,10 @@ function verifyArchive(archive, plist, { sourceRoot = root, archiveAPI = asar } 
   const packaged = JSON.parse(archiveAPI.extractFile(archive, "package.json").toString("utf8"));
   if (packaged.version !== expected.version || packaged.version !== plist.CFBundleShortVersionString)
     throw new Error("Source, application and archive versions do not match.");
-  if (packaged.main !== "electron/main.cjs" || packaged.name !== "tableline" || packaged.license !== "MIT")
+  if (packaged.main !== "electron/main.cjs" || packaged.name !== "tableline" ||
+      packaged.license !== "GPL-3.0-only" || expected.license !== packaged.license)
     throw new Error("Unexpected archive application metadata.");
-  for (const entry of ["electron/main.cjs", "electron/preload.cjs", "dist/index.html", "assets/icon.png", "LICENSE", "THIRD_PARTY_NOTICES.md", ...LANGUAGES.map((lang) => `locales/${lang}.json`)]) {
+  for (const entry of ["electron/main.cjs", "electron/preload.cjs", "dist/index.html", "assets/icon.png", "LICENSE", "COPYRIGHT", "THIRD_PARTY_NOTICES.md", ...LANGUAGES.map((lang) => `locales/${lang}.json`)]) {
     const contents = archiveAPI.extractFile(archive, entry);
     if (!contents.length) throw new Error(`Missing required package entry: ${entry}`);
     if (entry.startsWith("locales/")) {
@@ -60,7 +64,7 @@ function verifyArchive(archive, plist, { sourceRoot = root, archiveAPI = asar } 
     if (sourceHash !== archiveHash) throw new Error(`Archive source mismatch: ${entry}`);
     return { path: entry, sha256: sourceHash };
   });
-  return { version: packaged.version, sourceMatches: true, files, languageCatalogs: LANGUAGES };
+  return { version: packaged.version, license: packaged.license, sourceMatches: true, files, languageCatalogs: LANGUAGES };
 }
 
 function electronLicensesDirectory(bundle, { create = false } = {}) {

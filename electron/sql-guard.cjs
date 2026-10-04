@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 "use strict";
 
 // A deliberately small SQL surface. Database-level read-only transactions are a

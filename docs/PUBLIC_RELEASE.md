@@ -4,7 +4,7 @@ The public source repository is [Hexecu/tableline](https://github.com/Hexecu/tab
 
 ## Review the source
 
-1. Confirm the version in `package.json` and `package-lock.json`, the MIT license and Branchline attribution.
+1. Confirm the version in `package.json` and `package-lock.json`, `GPL-3.0-only` metadata, the complete GPLv3 text in `LICENSE`, the notice in `COPYRIGHT` and historical Branchline attribution. Do not reuse an earlier MIT release tag or replace its artifacts; the first GPL binary must have a new version after v0.2.0.
 2. Review the staged source and all history being published for credentials, personal paths, proprietary fixtures and local incident logs. Exclude `artifacts/`, `.env*`, app data, databases, build caches and signing material. Public source must contain only synthetic fixtures.
 3. Run `npm ci`, `npm test`, `npm run test:i18n`, `npm run build` and `node scripts/e2e-locales.cjs`. Unit and locale desktop QA must not invoke native credential APIs.
 4. Run `npm audit --omit=dev` and `npm audit`; report development-only findings separately. Inspect dependency licenses and retain distributed notices. Do not use a forced downgrade as evidence that an advisory is patched.
@@ -24,6 +24,6 @@ macOS notarization is a separate maintainer step. A locally signed build alone i
 
 ## Publish the reviewed artifact
 
-Archive the exact verified app, produce a SHA-256 checksum and test an extracted copy. Avoid repackaging after verification. Attach the binary and checksum to a versioned GitHub release linked to the reviewed source commit. Release notes must identify platform/architecture, signature/notarization evidence, language coverage, checks performed and material limitations.
+Archive the exact verified app, produce a SHA-256 checksum and test an extracted copy. Avoid repackaging after verification. Attach the binary and checksum to a versioned GitHub release linked to the reviewed source commit. At the same download location, provide equivalent access to the complete Corresponding Source for that exact binary, including the dependency lockfile, build scripts and instructions; clearly link the exact tag/source archive in the release notes. A link to a moving branch is insufficient. Confirm that the tagged source rebuilds the distributed version and that any additional source required by bundled dependencies is accessible with its applicable notices. Release notes must identify `GPL-3.0-only`, platform/architecture, signature/notarization evidence, language coverage, checks performed and material limitations.
 
 Download the published archive, verify its checksum, extract it and inspect its version/signature again. Upload success alone does not prove that the public asset is correct. Do not claim cloud integration acceptance, secure-storage acceptance, universal database coverage or an SLA based on local fixtures.

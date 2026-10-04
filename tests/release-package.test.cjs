@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 "use strict";
 
 const test = require("node:test");
@@ -16,11 +19,12 @@ function fixture() {
   const entries = {
     "electron/main.cjs": "main fixture", "electron/preload.cjs": "preload fixture",
     "dist/index.html": "<html>fixture</html>", "dist/assets/app.js": "fixture bundle",
-    "assets/icon.png": "fixture png", "LICENSE": "MIT fixture",
+    "assets/icon.png": "fixture png", "LICENSE": "GPLv3 fixture",
+    "COPYRIGHT": "GPL-3.0-only copyright, warranty and source notice fixture",
     "THIRD_PARTY_NOTICES.md": "fixture notice",
     ...Object.fromEntries(["en", "it", "fr", "de", "es"].map((lang) => [`locales/${lang}.json`, JSON.stringify({ welcome: lang })])),
   };
-  const metadata = { name: "tableline", version: "0.2.0", main: "electron/main.cjs", license: "MIT", build: { appId: "local.tableline.desktop" } };
+  const metadata = { name: "tableline", version: "0.2.0", main: "electron/main.cjs", license: "GPL-3.0-only", build: { appId: "local.tableline.desktop" } };
   entries["package.json"] = JSON.stringify(metadata);
   for (const [entry, data] of Object.entries(entries)) {
     const filename = path.join(root, entry);
@@ -48,7 +52,8 @@ test("release verifier matches every runtime file, license, icon source and all 
   try {
     const verified = verifyArchive("fixture", f.plist, { sourceRoot: f.root, archiveAPI: f.archiveAPI });
     assert.equal(verified.sourceMatches, true);
-    assert.equal(verified.files.length, 12);
+    assert.equal(verified.files.length, 13);
+    assert.equal(verified.license, "GPL-3.0-only");
     assert.deepEqual(verified.languageCatalogs, ["en", "it", "fr", "de", "es"]);
     assert.ok(verified.files.every((file) => /^[a-f\d]{64}$/.test(file.sha256)));
     fs.writeFileSync(path.join(f.root, "dist/assets/app.js"), "updated after build");
@@ -56,7 +61,7 @@ test("release verifier matches every runtime file, license, icon source and all 
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
-for (const corruption of ["bundle-id", "source-version", "package-version", "header", "missing-language", "empty-language", "missing-license", "metadata"]) {
+for (const corruption of ["bundle-id", "source-version", "package-version", "header", "missing-language", "empty-language", "missing-license", "missing-copyright", "source-license", "package-license", "metadata"]) {
   test(`release verifier rejects ${corruption}`, () => {
     const f = fixture();
     try {
@@ -69,6 +74,9 @@ for (const corruption of ["bundle-id", "source-version", "package-version", "hea
       if (corruption === "missing-language") delete f.entries["locales/it.json"];
       if (corruption === "empty-language") f.entries["locales/it.json"] = "{}";
       if (corruption === "missing-license") delete f.entries["LICENSE"];
+      if (corruption === "missing-copyright") delete f.entries["COPYRIGHT"];
+      if (corruption === "source-license") fs.writeFileSync(path.join(f.root, "package.json"), JSON.stringify({ ...f.metadata, license: "MIT" }));
+      if (corruption === "package-license") f.entries["package.json"] = JSON.stringify({ ...f.metadata, license: "MIT" });
       if (corruption === "metadata") f.entries["package.json"] = JSON.stringify({ ...f.metadata, main: "other.cjs" });
       assert.throws(() => verifyArchive("fixture", f.plist, { sourceRoot: f.root, archiveAPI: f.archiveAPI }));
     } finally { fs.rmSync(f.root, { recursive: true, force: true }); }

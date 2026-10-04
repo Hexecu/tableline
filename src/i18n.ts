@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 import { normalizeLanguage, resolveLanguage, supportedLanguages, translateForLanguage } from '../locales/runtime.mjs';
 import type { Language } from '../locales/runtime.mjs';
 export type { Language };

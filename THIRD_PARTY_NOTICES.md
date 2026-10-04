@@ -1,15 +1,37 @@
 # Third-party notices
 
-Tableline's application source is licensed under the MIT license in `LICENSE`.
+Tableline's original application source, documentation and assets are licensed under [GNU GPL version 3 only](LICENSE) (`GPL-3.0-only`); see [COPYRIGHT](COPYRIGHT). Third-party components retain the licenses and notices listed below. Earlier MIT releases, including v0.2.0, retain their original terms.
 Its visual design and assets are original. TablePlus is a product reference and is not affiliated with this project; no TablePlus source, brand assets or credentials are included.
 
 ## Branchline provider integrations
 
 `electron/ai.cjs`, `electron/ai-import.cjs` and the credential-vault foundation adapt code from [Branchline](https://github.com/Hexecu/branchline), maintained by Davide Leopardi. The reference snapshot is commit `b408b409a2722a7941eb1e34dd602b45dd2d6c4e`. The release/signing helpers under `scripts/` also adapt Branchline's release strategy. Tableline modifies the assistant protocol, database grounding, credentials namespace, native storage queue, endpoint policy, release gates and public API for its own application.
 
-The following notice applies to that adapted source:
+That reference snapshot was released under MIT. Its original notice is reproduced below to preserve attribution and the permissions already granted for that snapshot. This historical notice does not offer the current Tableline project and subsequent modifications under an alternative MIT license.
 
-> MIT License — Copyright (c) 2026 Davide Leopardi. Permission is granted under the complete MIT license included in [LICENSE](LICENSE), including its copyright-preservation requirement and warranty disclaimer.
+```text
+MIT License
+
+Copyright (c) 2026 Davide Leopardi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 Branchline configuration, repositories, user data and credentials are not distributed with Tableline.
 

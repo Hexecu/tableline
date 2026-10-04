@@ -53,6 +53,7 @@
       "assets/**/*",
       "package.json",
       "LICENSE",
+      "COPYRIGHT",
       "THIRD_PARTY_NOTICES.md",
       "locales/**/*"
     ],
@@ -86,7 +87,7 @@
   "engines": {
     "node": ">=22.13.0"
   },
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "overrides": {
     "basic-ftp": "^6.2.1",
     "uuid": "^11.1.1"

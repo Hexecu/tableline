@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Davide Leopardi
+# SPDX-License-Identifier: GPL-3.0-only
+
 name: Feature proposal
 description: Describe the workflow a change would improve.
 title: "[Feature]: "

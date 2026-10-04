@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 export type Language = 'en' | 'it' | 'fr' | 'de' | 'es';
 export const supportedLanguages: readonly Language[];
 export const catalogs: Readonly<Record<Language, Record<string, string>>>;

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 'use strict';
 // This suite uses disposable local data and forbids every OS credential operation.
 const { _electron: electron } = require('playwright');

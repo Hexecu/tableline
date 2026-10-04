@@ -31,7 +31,7 @@ directories, not installers or signed public artifacts.
 
 `npm run verify:package -- /path/to/Tableline.app` checks the entire code/resource
 signature, executable architecture, sealed ASAR header, stable app identifier, matching source/build/app
-versions, packaged icon, MIT license/notices and all five language catalogs.
+versions, packaged icon, GPLv3 license, copyright/third-party notices and all five language catalogs.
 Every source file under `electron`, `dist`, `assets` and `locales` must match its
 packaged SHA-256 hash. Verification never launches the app or accesses its
 credential store. Freeze these source files while building and verifying.
@@ -98,8 +98,11 @@ safeStorage calls. `TABLELINE_E2E_CREDENTIALS=1` is a separate supervised opt-in
 that may open macOS Keychain dialogs. Signing and notarization do not prove live
 database or LLM credentials work. Never put secrets in release logs or source.
 
-The release/signing strategy is adapted from Branchline under MIT; attribution
-is retained in `THIRD_PARTY_NOTICES.md`.
+The release/signing strategy is adapted from a historical MIT-licensed Branchline
+snapshot; its original attribution and complete MIT notice are retained in
+`THIRD_PARTY_NOTICES.md`. Current Tableline source is GPL-3.0-only. Future GPL
+binary releases must provide the exact Corresponding Source as described in
+`PUBLIC_RELEASE.md`; previously published MIT binaries retain their terms.
 
 ## Redistributed notices
 

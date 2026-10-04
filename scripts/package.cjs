@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 "use strict";
 
 // Packaging/signing strategy adapted from Branchline (MIT), copyright (c)

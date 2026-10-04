@@ -34,4 +34,4 @@ For translations, update the same message key in all five files under `locales/`
 
 ## Community
 
-Be respectful, explain disagreements with evidence and keep discussions focused on the work. Do not post other people's private data. Public contributions are accepted under the project's MIT license; retain applicable third-party attribution.
+Be respectful, explain disagreements with evidence and keep discussions focused on the work. Do not post other people's private data. Public contributions are accepted under the project's [GPL-3.0-only license](LICENSE); retain applicable third-party attribution and the source file's copyright/license notice. Add an accurate copyright notice for your own contributions when appropriate. Third-party components retain their original licenses.

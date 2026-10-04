@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 "use strict";
 const { quoteIdentifier, tokenize } = require("../sql-guard.cjs");
 const { preview, verifyRows, verifyAffected } = require("./write-preview.cjs");

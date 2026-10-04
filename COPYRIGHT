@@ -1,0 +1,29 @@
+Tableline
+Copyright (c) 2026 Davide Leopardi
+SPDX-License-Identifier: GPL-3.0-only
+
+Tableline is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License, version 3 only, as published
+by the Free Software Foundation.
+
+Tableline is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License in
+LICENSE for more details: https://www.gnu.org/licenses/gpl-3.0.html.
+
+This notice applies to the project's original source, documentation and
+assets. Third-party components retain their own licenses and copyright
+notices; see THIRD_PARTY_NOTICES.md and the notices distributed with them.
+
+Source code, dependency lockfile and build instructions:
+https://github.com/Hexecu/tableline
+
+Every future GPL binary release must provide equivalent access to its
+complete Corresponding Source, including build scripts and the lockfile,
+at the same download location. Use the exact release tag/source archive
+identified in that release's notes, rather than a moving branch.
+
+The GPL transition applies to this source revision and subsequent work.
+Earlier versions published under MIT, including v0.2.0, remain available
+under their original MIT terms. Their tags and release artifacts are not
+relicensed by this notice.

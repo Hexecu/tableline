@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 "use strict";
 // Native menu labels are app-owned; OS authentication/file dialogs retain the OS language.
 const labels = Object.freeze({

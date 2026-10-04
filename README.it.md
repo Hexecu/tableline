@@ -64,4 +64,6 @@ Le istruzioni per fixture Docker, limiti operativi, recupero e packaging sono in
 
 ## Licenza
 
-MIT. Il livello provider adatta codice di [Branchline](https://github.com/Hexecu/branchline), con attribuzione e licenza conservate nelle [note terze parti](THIRD_PARTY_NOTICES.md). Tableline ha codice, asset visivi e identità propri. TablePlus è un prodotto indipendente e non è affiliato.
+Il codice originale, la documentazione e gli asset di Tableline sono distribuiti sotto [GNU General Public License, esclusivamente versione 3](LICENSE) (`GPL-3.0-only`). [COPYRIGHT](COPYRIGHT) contiene gli avvisi sul copyright, sull'assenza di garanzia e sulla disponibilità dei sorgenti. I contributi usano la stessa licenza. Chi distribuisce versioni modificate deve fornire il relativo codice sorgente sotto GPLv3; sono consentiti uso privato e commerciale.
+
+Il passaggio a GPL parte dalla revisione che introduce questo avviso. Le versioni precedenti, compresa v0.2.0, conservano le condizioni MIT originali; tag e artefatti pubblicati restano invariati. I componenti esterni mantengono le proprie licenze. Il livello provider adatta codice di una precedente versione MIT di [Branchline](https://github.com/Hexecu/branchline), con copyright e testo MIT completo conservati nelle [note terze parti](THIRD_PARTY_NOTICES.md). TablePlus è un prodotto indipendente e non è affiliato.

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { getLanguage, setLanguage, subscribeLanguage, translate } from './i18n';

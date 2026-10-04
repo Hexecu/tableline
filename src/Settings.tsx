@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 import { translate, formatNumber, formatDate, getLanguage, languageNames, supportedLanguages } from "./i18n";
 import { useI18n } from "./LocaleProvider";
 import { useEffect, useState, useRef } from "react";

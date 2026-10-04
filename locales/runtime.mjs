@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Davide Leopardi
+// SPDX-License-Identifier: GPL-3.0-only
+
 import en from './en.json' with { type: 'json' };
 import it from './it.json' with { type: 'json' };
 import fr from './fr.json' with { type: 'json' };
