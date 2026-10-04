@@ -35,4 +35,14 @@ Every proposed update targeted fixture product 9. An independent read confirmed 
 
 Live-account checks are supervised acceptance evidence, separate from those credential-free fixtures. A successful model-test response alone does not establish database answering or write-review behavior.
 
-Local source verification: **273 passing unit tests, two optional tests skipped**, a successful production build, **9 AI configuration desktop checks** and **35 locale desktop checks** across five catalogs of 521 messages. Native credential APIs remained unused in those desktop fixtures. Signed-package acceptance and installed-app checks are separate from source tests and will be recorded after completion.
+Local source verification: **273 passing unit tests, two optional tests skipped**, a successful production build, **9 AI configuration desktop checks** and **35 locale desktop checks** across five catalogs of 521 messages. Native credential APIs remained unused in those desktop fixtures. GitHub Actions passed all seven source, desktop and secret-scan jobs on macOS/Linux and Node 22/24 for commit `2a5f1331a86227260d5c6a147a2d06dedd41ffd5`.
+
+## Local installed-app acceptance
+
+The exact 0.2.1 Apple Silicon bundle passed Developer ID signature verification, Accepted Apple notarization, stapled-ticket validation, Gatekeeper assessment and packaged-source matching. Its signed designated requirement matches the existing 0.2.0 application. The installed ASAR SHA-256 is `bd2110ef9dbd56d4e85c4e12c3c76d8a6ffc7b56879a0e9dcc3327fc0c5ae7e8`.
+
+The signed bundle passed **9 AI selection checks, 35 locale checks and 17 workspace checks**. One additional workspace check for saving new encrypted credentials was intentionally excluded; no OS authorization dialog was requested by those fixtures. The complete final source passed **32 supervised live checks** across the eight aliases above, with all explicit count/stock results verified and all write previews leaving fixture rows unchanged.
+
+After installation, the normal application automatically selected the existing LiteLLM profile. The original Italian question returned **3 camera products and 182 units** through Gemini 3.5 Flash. The UI displayed the executed aggregate SQL and the actual result row containing 3 and 182. The existing encrypted credentials and connection/provider configuration remained byte-for-byte unchanged, and no new Keychain approval was needed. The previous app was preserved locally for rollback.
+
+This records a local installed build and a public source fix. A new public GPL binary has not been uploaded; the native dependency source requirement remains tracked in [the release procedure](PUBLIC_RELEASE.md#first-gpl-binary-dependency-sources). Historical v0.2.0 downloads retain their original MIT terms and artifacts.
