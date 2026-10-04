@@ -66,6 +66,12 @@ jobs:
       - name: Locale smoke on macOS
         if: runner.os == 'macOS'
         run: node scripts/e2e-locales.cjs
+      - name: AI configuration regression on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:e2e:ai
+      - name: AI configuration regression on macOS
+        if: runner.os == 'macOS'
+        run: npm run test:e2e:ai
       - name: Upload isolated locale reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

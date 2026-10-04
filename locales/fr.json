@@ -338,8 +338,6 @@
   "insertOne richiede un documento.": "insertOne nécessite un document.",
   "Aggiornamento MongoDB non supportato.": "Mise à jour MongoDB non prise en charge.",
   "Risposta strutturata AI non valida.": "Réponse IA structurée invalide.",
-  "Il modello deve restituire una decisione JSON valida. Nessuna query eseguita.": "Le modèle doit renvoyer une décision JSON valide. Aucune requête exécutée.",
-  "Strumento AI non supportato. Nessuna azione eseguita.": "Outil IA non pris en charge. Aucune action effectuée.",
   "Risposta finale AI non valida.": "Réponse IA finale invalide.",
   "Cronologia AI non valida.": "Historique IA invalide.",
   "Servizi assistente non disponibili.": "Services de l’assistant indisponibles.",
@@ -515,5 +513,11 @@
   "Redis write command {command} is not supported.": "La commande d’écriture Redis {command} n’est pas prise en charge.",
   "Redis read command {command} is not supported.": "La commande de lecture Redis {command} n’est pas prise en charge.",
   "Write exceeds the {max}-row commit limit and was rolled back.": "L’écriture dépasse la limite de {max} lignes et a été annulée.",
-  "Function {name} is not allowed in protected queries.": "La fonction {name} n’est pas autorisée dans les requêtes protégées."
+  "Function {name} is not allowed in protected queries.": "La fonction {name} n’est pas autorisée dans les requêtes protégées.",
+  "Il modello deve restituire una decisione JSON valida. Nessuna ulteriore query eseguita.": "Le modèle doit renvoyer une décision JSON valide. Aucune requête supplémentaire exécutée.",
+  "Strumento AI non supportato. Nessuna ulteriore azione eseguita.": "Outil IA non pris en charge. Aucune action supplémentaire effectuée.",
+  "Il modello ha raggiunto il limite di generazione prima di completare la decisione JSON. Nessuna ulteriore query eseguita: riprova con una richiesta più breve.": "Le modèle a atteint sa limite de génération avant de terminer la décision JSON. Aucune requête supplémentaire exécutée : essayez une demande plus courte.",
+  "Opzione di riparazione JSON non valida.": "Option de correction JSON non valide.",
+  "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "Le comptage de la requête est de 0. Vérifiez le critère avant de conclure que les données demandées sont absentes.",
+  "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "La requête n’a renvoyé aucune ligne. Vérifiez le critère avant de conclure que les données demandées sont absentes."
 }

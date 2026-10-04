@@ -29,12 +29,13 @@ function plain(value) {
 // SQL returned by a model is untrusted. The database applies its own dialect-aware
 // policy and read-only transaction too; this independent guard prevents dispatch
 // of writes or external access through the assistant's read tool.
-function tokens(sql) {
+function tokens(sql, dialect = "unknown") {
   if (
     typeof sql !== "string" ||
     !sql.trim() ||
     sql.length > 16000 ||
-    /[\0\\]/.test(sql)
+    sql.includes("\0") ||
+    (dialect !== "sqlite" && sql.includes("\\"))
   )
     throw new Error("SQL AI non valido.");
   let clean = "",
@@ -49,7 +50,10 @@ function tokens(sql) {
       let closed = false;
       for (i++; i < sql.length; i++) {
         if (sql[i] === "\\") {
-          i++;
+          if (dialect !== "sqlite" || quote !== "'")
+            throw new Error("SQL AI non valido.");
+          // SQLite treats backslash as an ordinary literal character. It never
+          // escapes the following apostrophe; only doubled apostrophes do that.
           continue;
         }
         if (sql[i] === quote) {
@@ -64,26 +68,32 @@ function tokens(sql) {
       if (!closed) throw new Error("SQL AI contiene una stringa non chiusa.");
       if (quote !== "'") clean += " " + sql.slice(begin, i) + " ";
     } else if (c === "-" && next === "-") {
+      const end = sql.indexOf("\n", i);
+      if (sql.slice(i, end < 0 ? sql.length : end).includes("\\"))
+        throw new Error("SQL AI non valido.");
       while (i < sql.length && sql[i] !== "\n") i++;
       clean += " ";
     } else if (c === "/" && next === "*") {
       const end = sql.indexOf("*/", i + 2);
       if (end < 0 || sql[i + 2] === "!")
         throw new Error("Commento SQL non supportato.");
+      if (sql.slice(i, end + 2).includes("\\"))
+        throw new Error("SQL AI non valido.");
       i = end + 1;
       clean += " ";
     } else if (c === ";") {
       statements++;
       if (sql.slice(i + 1).trim())
         throw new Error("L'assistente consente una sola istruzione SQL.");
-    } else clean += c;
+    } else if (c === "\\") throw new Error("SQL AI non valido.");
+    else clean += c;
   }
   if (statements > 1 || /\$[a-zA-Z_]*\$/.test(clean))
     throw new Error("SQL AI non supportato.");
   return clean.trim();
 }
-function readSQL(sql) {
-  const clean = tokens(sql);
+function readSQL(sql, dialect = "unknown") {
+  const clean = tokens(sql, dialect);
   if (
     !/^(select|with|explain\s+select|explain\s+with)\b/i.test(clean) ||
     UNSAFE_READ.test(clean) ||
@@ -94,8 +104,8 @@ function readSQL(sql) {
     );
   return sql.trim();
 }
-function writeSQL(sql) {
-  const clean = tokens(sql);
+function writeSQL(sql, dialect = "unknown") {
+  const clean = tokens(sql, dialect);
   if (
     !/^(update|insert\s+into|delete\s+from)\b/i.test(clean) ||
     /\b(returning|copy|call|exec|execute|create|drop|alter|truncate|grant|revoke)\b/i.test(
@@ -135,7 +145,7 @@ function params(input) {
 }
 function dataCommand(input, dialect, mode, schema) {
   if (!["mongodb", "redis"].includes(dialect))
-    return mode === "read" ? readSQL(input) : writeSQL(input);
+    return mode === "read" ? readSQL(input, dialect) : writeSQL(input, dialect);
   if (typeof input !== "string" || !input.trim() || input.length > 16000)
     throw new Error("Comando dati AI non valido.");
   const value = documentCommand(input);
@@ -232,15 +242,17 @@ function decisionOf(text) {
       text.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/, "$1"),
     );
   } catch {
-    throw new Error(
-      "Il modello deve restituire una decisione JSON valida. Nessuna query eseguita.",
+    const error = new Error(
+      "Il modello deve restituire una decisione JSON valida. Nessuna ulteriore query eseguita.",
     );
+    error.code = "AI_INVALID_DECISION_JSON";
+    throw error;
   }
   if (
     !plain(parsed) ||
     !["query_read", "prepare_write", "final"].includes(parsed.action)
   )
-    throw new Error("Strumento AI non supportato. Nessuna azione eseguita.");
+    throw new Error("Strumento AI non supportato. Nessuna ulteriore azione eseguita.");
   if (
     parsed.action === "final" &&
     (typeof parsed.answer !== "string" ||
@@ -250,6 +262,35 @@ function decisionOf(text) {
     throw new Error("Risposta finale AI non valida.");
   return parsed;
 }
+
+function zeroResultKind(result, sql, dialect) {
+  if (!result || result.truncated || !Array.isArray(result.rows)) return;
+  if (result.rows.length === 0) return "rows";
+  if (result.rows.length !== 1 || result.columns?.length !== 1) return;
+  const row = result.rows[0];
+  if (!plain(row) || Object.keys(row).length !== 1) return;
+  const column = result.columns[0];
+  const key = typeof column === "string" ? column : column?.name;
+  if (typeof key !== "string" || !Object.hasOwn(row, key)) return;
+  if (![0, 0n, "0"].includes(row[key])) return;
+  // tokens() removes identifier quotes: COUNT("1") or COUNT("*") could refer
+  // to nullable columns rather than count rows. Keep quoted SQL outside this
+  // conservative classifier; the actual-empty-rows check above still applies.
+  if (typeof sql !== "string" || /["`]/.test(sql)) return;
+  let clean;
+  try {
+    clean = tokens(sql, dialect);
+  } catch {
+    return;
+  }
+  // Deliberately recognize only direct scalar COUNT(*) or COUNT(1). COUNT(column)
+  // can be zero for nonempty rows with NULL values. SUMs, expressions, grouped
+  // counts and percentages also remain outside this narrow match-count guard.
+  if (/\b(group\s+by|having|union|intersect|except)\b/i.test(clean)) return;
+  if (/^select\s+(?:all\s+)?count\s*\(\s*(?:\*|1)\s*\)\s*(?:(?:as\s+)?[a-z_][a-z_0-9$]*\s+)?from\b/i.test(clean))
+    return "count";
+}
+
 function safeHistory(history) {
   if (history === undefined) return [];
   if (!Array.isArray(history) || history.length > 100)
@@ -452,10 +493,13 @@ class AssistantService {
       });
     const evidence = [];
     let result, sql, resultSQL;
+    let protocolRepairUsed = false;
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-      const raw = await this.ai.generate({
+      const request = {
         profileId: provider.id,
+        model: provider.model,
         prompt,
+        ...(protocolRepairUsed ? { protocolRepair: true } : {}),
         context: {
           mode,
           responseLanguage: language,
@@ -471,16 +515,38 @@ class AssistantService {
           history: past,
           toolResults: structuredClone(evidence),
         },
-      });
-      const decision = decisionOf(raw);
+      };
+      const raw = await this.ai.generate(request);
+      let decision;
+      try {
+        decision = decisionOf(raw);
+      } catch (error) {
+        if (error.code !== "AI_INVALID_DECISION_JSON" || protocolRepairUsed)
+          throw error;
+        // One extra protocol-only generation for the entire ask, on the same
+        // exact model. Keep its instruction in all later rounds, without granting
+        // another extra attempt when malformed JSON recurs.
+        // No raw response is extracted, executed or forwarded as instructions;
+        // transport supplies the controlled repair instruction outside data.
+        protocolRepairUsed = true;
+        decision = decisionOf(await this.ai.generate({
+          ...request,
+          protocolRepair: true,
+        }));
+      }
       if (decision.action === "final") {
         const grounded = evidence.some((item) => item.result);
+        const zeroKind = grounded ? zeroResultKind(result, resultSQL, dialect) : undefined;
         const answer =
           evidence.length && !grounded
             ? t("Non ho ottenuto risultati dal database.") + " " +
               (evidence.at(-1).error ||
                 t("Ripeti la richiesta con una query diversa."))
-            : decision.answer.trim();
+            : zeroKind === "count"
+              ? t("Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.")
+              : zeroKind === "rows"
+                ? t("La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.")
+                : decision.answer.trim();
         return {
           answer,
           sql: resultSQL || sql,
@@ -643,6 +709,7 @@ class AssistantService {
             : "?";
       const sql = writeSQL(
         `UPDATE orders SET status = ${placeholder(1)} WHERE ${order ? "id" : "status"} = ${placeholder(2)}`,
+        dialect,
       );
       const proposal = await this.database.prepareWrite({
         connectionId,
@@ -737,7 +804,7 @@ class AssistantService {
         isMock: true,
       };
     }
-    sql = readSQL(sql);
+    sql = readSQL(sql, dialect);
     const result = await this.database.query({
       connectionId,
       sql,

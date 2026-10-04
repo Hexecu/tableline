@@ -338,8 +338,6 @@
   "insertOne richiede un documento.": "insertOne necesita un documento.",
   "Aggiornamento MongoDB non supportato.": "Actualización MongoDB no admitida.",
   "Risposta strutturata AI non valida.": "Respuesta IA estructurada no válida.",
-  "Il modello deve restituire una decisione JSON valida. Nessuna query eseguita.": "El modelo debe devolver una decisión JSON válida. No se ejecutó ninguna consulta.",
-  "Strumento AI non supportato. Nessuna azione eseguita.": "Herramienta IA no admitida. No se realizó ninguna acción.",
   "Risposta finale AI non valida.": "Respuesta final IA no válida.",
   "Cronologia AI non valida.": "Historial IA no válido.",
   "Servizi assistente non disponibili.": "Servicios de asistente no disponibles.",
@@ -515,5 +513,11 @@
   "Redis write command {command} is not supported.": "El comando de escritura Redis {command} no está admitido.",
   "Redis read command {command} is not supported.": "El comando de lectura Redis {command} no está admitido.",
   "Write exceeds the {max}-row commit limit and was rolled back.": "La escritura supera el límite de {max} filas y se revirtió.",
-  "Function {name} is not allowed in protected queries.": "La función {name} no está permitida en consultas protegidas."
+  "Function {name} is not allowed in protected queries.": "La función {name} no está permitida en consultas protegidas.",
+  "Il modello deve restituire una decisione JSON valida. Nessuna ulteriore query eseguita.": "El modelo debe devolver una decisión JSON válida. No se ejecutó ninguna consulta adicional.",
+  "Strumento AI non supportato. Nessuna ulteriore azione eseguita.": "Herramienta IA no admitida. No se realizó ninguna acción adicional.",
+  "Il modello ha raggiunto il limite di generazione prima di completare la decisione JSON. Nessuna ulteriore query eseguita: riprova con una richiesta più breve.": "El modelo alcanzó el límite de generación antes de completar la decisión JSON. No se ejecutó ninguna consulta adicional: prueba una solicitud más breve.",
+  "Opzione di riparazione JSON non valida.": "Opción de reparación JSON no válida.",
+  "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "El recuento de la consulta es 0. Revisa el criterio antes de concluir que los datos solicitados no existen.",
+  "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "La consulta no devolvió filas. Revisa el criterio antes de concluir que los datos solicitados no existen."
 }

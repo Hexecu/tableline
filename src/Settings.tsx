@@ -506,6 +506,8 @@ export function Providers({
   }, []);
   function update(k: string, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
+    if (["baseUrl", "region", "project", "location", "authMode", "apiVersion", "awsProfile"].includes(k))
+      setModels([]);
     setMessage("");
     setError("");
   }
@@ -536,7 +538,7 @@ export function Providers({
       if (kind === "models") {
         const r = await call("ai.discoverModels", p.id);
         setModels(r.models || []);
-        setMessage(r.note || translate("{count} modelli disponibili", { count: formatNumber(r.models.length) }));
+        setMessage(r.message || r.note || translate("{count} modelli disponibili", { count: formatNumber(r.models?.length || 0) }));
       } else if (kind === "test") {
         const r = await call("ai.test", p.id);
         setMessage(translate("Connesso · {latency} ms · {model}", { latency: formatNumber(r.latencyMs), model: r.model }));
@@ -571,6 +573,7 @@ export function Providers({
                 model: "",
               });
               setCreds({});
+              setModels([]);
               setMessage("");
               setError("");
             }}
@@ -852,13 +855,13 @@ export function Providers({
             )}
             <button
               className="secondary"
-              disabled={!!busy || !form.model}
+              disabled={!!busy || !form.model?.trim()}
               onClick={() => action("test")}
             >
               <FlaskConical size={14} /> {translate("Test")}</button>
             <button
               className="primary"
-              disabled={!!busy || !form.model}
+              disabled={!!busy || !form.model?.trim()}
               onClick={() => action("save")}
             >
               {busy && <LoaderCircle size={14} className="spin" />} {translate("Salva e attiva")}</button>

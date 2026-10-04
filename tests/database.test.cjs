@@ -11,6 +11,23 @@ const { DatabaseService, normalize } = require("../electron/database.cjs");
 const { guardSql, quoteIdentifier } = require("../electron/sql-guard.cjs");
 const { command, redisCommand } = require("../electron/drivers/document.cjs");
 
+test("SQLite LIKE escapes retain standard quote boundaries in both SQL guards", () => {
+  const valid = String.raw`SELECT COUNT(*) FROM products WHERE name LIKE ? ESCAPE '\'`;
+  assert.equal(guardSql(valid, "read", "sqlite").sql, valid);
+  assert.equal(guardSql(String.raw`SELECT 'it''s\safe' AS value`, "read", "sqlite").kind, "select");
+  for (const dialect of ["unknown", "postgres", "mysql", "sqlserver", "databricks", "clickhouse"])
+    assert.throws(() => guardSql(valid, "read", dialect), /backslash/);
+  for (const sql of [
+    String.raw`SELECT '\'; DELETE FROM products`,
+    String.raw`SELECT '\' || readfile('/tmp/data')`,
+    String.raw`SELECT 1 \ `,
+    String.raw`SELECT "name\" FROM products`,
+    String.raw`SELECT 1 -- \ comment`,
+    String.raw`SELECT 1 /* \ comment */`,
+  ]) assert.throws(() => guardSql(sql, "read", "sqlite"));
+  assert.throws(() => guardSql(String.raw`UPDATE products SET name='WHERE\'`, "read", "sqlite"));
+});
+
 let directory, db;
 test.before(async () => {
   directory = await fs.mkdtemp(path.join(os.tmpdir(), "tableline-db-test-"));
@@ -55,6 +72,21 @@ test("demo uses a real isolated database and is idempotent", async () => {
     sql: "SELECT count(*) n FROM customers WHERE email IS NULL",
   });
   assert.ok(nulls.rows[0].n > 0);
+});
+
+test("real SQLite escaped LIKE reads and write previews remain bounded and rollback", async () => {
+  const sql = String.raw`SELECT COUNT(*) AS count, SUM(stock) AS stock FROM products WHERE name LIKE ? ESCAPE '\'`;
+  const result = await db.query({ connectionId: "demo", sql, params: ["%camera%"] });
+  assert.deepEqual(result.rows, [{ count: 3, stock: 182 }]);
+  const proposal = await db.prepareWrite({
+    connectionId: "demo",
+    sql: String.raw`UPDATE products SET stock = ? WHERE name LIKE ? ESCAPE '\'`,
+    params: [5, "%camera%"],
+  });
+  assert.equal(proposal.affectedRows, 3);
+  assert.deepEqual((await db.query({ connectionId: "demo", sql, params: ["%camera%"] })).rows, result.rows);
+  await assert.rejects(db.query({ connectionId: "demo", sql: String.raw`SELECT '\'; DELETE FROM products` }));
+  assert.deepEqual((await db.query({ connectionId: "demo", sql, params: ["%camera%"] })).rows, result.rows);
 });
 test("browse applies pagination, stable sorting, and column metadata", async () => {
   const a = await db.browse({

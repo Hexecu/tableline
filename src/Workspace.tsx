@@ -515,15 +515,18 @@ export function Assistant({
   >([]);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"read" | "write">("read");
-  const [profile, setProfile] = useState(
-    connection?.id === "demo" ? "demo" : config.activeProfileId || "demo",
+  const configuredProfile = config.profiles.find(
+    (p) => p.id === config.activeProfileId && p.model.trim(),
   );
+  const [profile, setProfile] = useState(configuredProfile?.id || "demo");
+  const selectedProfile = config.profiles.find((p) => p.id === profile);
+  const profileReady = profile === "demo" || !!selectedProfile?.model.trim();
   const bottom = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    setProfile(
-      connection?.id === "demo" ? "demo" : config.activeProfileId || "demo",
-    );
-  }, [config.activeProfileId, connection?.id]);
+    // Saving/activating a provider must also select it on the local demo.
+    // Discovery can persist a profile before it has a model: keep those local.
+    setProfile(configuredProfile?.id || "demo");
+  }, [config, connection?.id]);
   useEffect(() => {
     setMessages([]);
     setPrompt("");
@@ -533,7 +536,7 @@ export function Assistant({
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
   async function ask(text = prompt) {
-    if (!text.trim() || busy || !connection) return;
+    if (!text.trim() || busy || !connection || !profileReady) return;
     setBusy(true);
     setPrompt("");
     setMessages((m) => [...m, { prompt: text }]);
@@ -598,8 +601,8 @@ export function Assistant({
         >
           <option value="demo">{translate("Demo locale · nessun LLM")}</option>
           {config.profiles.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} · {p.model}
+            <option key={p.id} value={p.id} disabled={!p.model.trim()}>
+              {p.name} · {p.model || translate("Scegli modello")}
             </option>
           ))}
         </select>
@@ -624,9 +627,8 @@ export function Assistant({
         {profile !== "demo" && (
           <div className="destination">
             {translate("Dati →")}{" "}
-            {config.profiles.find((p) => p.id === profile)?.baseUrl ||
-              config.profiles.find((p) => p.id === profile)?.provider}{" "}
-            · {config.profiles.find((p) => p.id === profile)?.model}
+            {selectedProfile?.baseUrl || selectedProfile?.provider}{" "}
+            · {selectedProfile?.model}
           </div>
         )}
       </div>
@@ -742,7 +744,7 @@ export function Assistant({
           <button
             className="send-button"
             aria-label={translate("Invia domanda")}
-            disabled={busy || !prompt.trim() || !connection}
+            disabled={busy || !prompt.trim() || !connection || !profileReady}
             type="submit"
           >
             {busy ? (

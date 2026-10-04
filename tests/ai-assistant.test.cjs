@@ -221,6 +221,42 @@ test("queries cannot bypass read policy through CTEs, quotes, comments, batching
   );
 });
 
+test("SQLite allows backslash only as an ordinary single-quoted literal character while other dialects remain strict", async () => {
+  const escapeSQL = String.raw`SELECT COUNT(*) AS count_products, SUM(stock) AS total_stock FROM products WHERE name LIKE ? ESCAPE '\'`;
+  const write = String.raw`UPDATE orders SET status = 'ship\ped' WHERE id = ?`;
+  assert.equal(readSQL(escapeSQL, "sqlite"), escapeSQL);
+  assert.equal(readSQL(String.raw`SELECT 'it''s\safe' AS note`, "sqlite"), String.raw`SELECT 'it''s\safe' AS note`);
+  assert.equal(writeSQL(write, "sqlite"), write);
+  for (const dialect of ["unknown", "postgres", "postgresql", "mysql", "aurora-mysql", "aurora-postgres", "sqlserver", "clickhouse"]) {
+    assert.throws(() => readSQL(escapeSQL, dialect), /SQL AI/);
+    assert.throws(() => writeSQL(write, dialect), /SQL AI/);
+    const f = fixture([{ action: "query_read", sql: escapeSQL, params: ["%camera%"] }]);
+    f.database.connections = async () => [{ id: "demo-connection", driver: dialect }];
+    await assert.rejects(f.assistant.ask({ connectionId: "demo-connection", prompt: "Conta prodotti camera" }), /SQL AI/);
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 0);
+  }
+});
+
+test("SQLite backslash-quote injection, backslash identifiers, comments and outside-literal tokens remain blocked", async () => {
+  for (const sql of [
+    String.raw`SELECT '\'; DELETE FROM orders --`,
+    String.raw`SELECT 'x\' AS note; UPDATE orders SET status = 'paid' WHERE id = 1 --`,
+    String.raw`SELECT '\' UNION SELECT load_file('/tmp/password')`,
+    String.raw`SELECT 'x\'; ATTACH DATABASE '/tmp/owned-fixture' AS pwn --`,
+    String.raw`SELECT "name\suffix" FROM products`,
+    "SELECT `name\\suffix` FROM products",
+    String.raw`SELECT \ FROM products`,
+    String.raw`SELECT 1 -- backslash\comment`,
+    String.raw`SELECT 1 /* backslash\comment */`,
+  ]) {
+    assert.throws(() => readSQL(sql, "sqlite"));
+    const f = fixture([{ action: "query_read", sql }]);
+    await assert.rejects(f.assistant.ask({ connectionId: "demo-connection", prompt: "Leggi prodotti" }));
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 0);
+  }
+  assert.throws(() => writeSQL(String.raw`UPDATE orders SET status = 'x\' WHERE id = 1; DELETE FROM customers`, "sqlite"));
+});
+
 test("destructive or unlimited proposals are rejected", () => {
   for (const sql of [
     "DROP TABLE orders",
@@ -268,6 +304,260 @@ test("tool loop is bounded to four operations, malformed/unknown tools never dis
     malformed.calls.filter((call) => call.action === "query").length,
     0,
   );
+});
+
+test("prose, truncated JSON and multiple decisions never expose or execute extracted SQL", async () => {
+  const query = '{"action":"query_read","sql":"SELECT COUNT(*) AS count FROM products","params":[]}';
+  for (const response of [
+    "Ecco la query richiesta: " + query,
+    query + "\n\n[Risposta interrotta al limite di generazione.]",
+    query + '\n{"action":"final","answer":"Ci sono 3 prodotti."}',
+    query.slice(0, -1),
+    "SELECT COUNT(*) AS count FROM products",
+    '```json\n' + query + '\n```\nTesto aggiuntivo',
+  ]) {
+    const f = fixture([response]);
+    await assert.rejects(f.assistant.ask({
+      connectionId: "demo-connection",
+      prompt: "quanti prodotti di tipo camera ho",
+    }), /JSON valida/);
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 0);
+    assert.equal(f.proposals.length, 0);
+    assert.equal(f.sent.length, 2);
+    assert.equal(f.sent[1].protocolRepair, true);
+  }
+  assert.equal(decisionOf('```json\n' + query + '\n```').action, "query_read");
+});
+
+test("a malformed later decision reports no further query after the earlier valid read", async () => {
+  const firstSQL = "SELECT DISTINCT category FROM products";
+  const f = fixture([
+    { action: "query_read", sql: firstSQL, params: [] },
+    '{action:"query_read",sql:"SELECT id, name, category, stock FROM products WHERE name LIKE \'%camera%\'",params:[]}',
+  ]);
+  await assert.rejects(f.assistant.ask({
+    connectionId: "demo-connection",
+    prompt: "quanti prodotti di tipo camera ho",
+  }), (error) => {
+    assert.equal(error.message, "Il modello deve restituire una decisione JSON valida. Nessuna ulteriore query eseguita.");
+    assert.equal(error.message.includes("Nessuna query eseguita."), false);
+    return true;
+  });
+  const reads = f.calls.filter((call) => call.action === "query");
+  assert.equal(reads.length, 1);
+  assert.equal(reads[0].sql, firstSQL);
+  assert.equal(f.sent.length, 3);
+  assert.equal(f.sent[1].context.toolResults.length, 1);
+  assert.equal(f.sent[1].context.toolResults[0].sql, firstSQL);
+  assert.equal(f.proposals.length, 0);
+});
+
+test("one protocol repair re-asks the same model without extracting or executing an Opus prose preamble", async () => {
+  const sql = "SELECT DISTINCT category FROM products";
+  const preamble = '\n\nI need to first check what categories exist in the products table to find the one related to "camera".\n\n';
+  const decision = { action: "query_read", sql, params: [] };
+  const f = fixture([
+    preamble + JSON.stringify(decision),
+    decision,
+    { action: "final", answer: "Risultati verificati." },
+  ]);
+  const response = await f.assistant.ask({
+    connectionId: "demo-connection",
+    profileId: "configured-model",
+    prompt: "quanti prodotti di tipo camera ho",
+  });
+  assert.equal(response.grounded, true);
+  assert.equal(f.sent.length, 3);
+  assert.equal(f.sent.filter((call) => call.protocolRepair).length, 2);
+  assert.equal(f.sent[1].protocolRepair, true);
+  assert.equal(f.sent[0].model, "mock-transport");
+  assert.equal(f.sent[1].model, f.sent[0].model);
+  assert.equal(f.sent[1].profileId, f.sent[0].profileId);
+  assert.equal(f.sent[1].prompt, f.sent[0].prompt);
+  assert.deepEqual(f.sent[1].context, f.sent[0].context);
+  assert.equal(JSON.stringify(f.sent[1]).includes("I need to first check"), false);
+  assert.equal(f.sent[1].context.toolResults.length, 0);
+  assert.equal(f.calls.filter((call) => call.action === "query").length, 1);
+  assert.equal(f.calls[1].sql, sql);
+  assert.equal(f.sent[2].context.toolResults[0].sql, sql);
+  assert.equal(f.sent[2].protocolRepair, true);
+  assert.deepEqual(f.sent.map((call) => call.context.round), [0, 0, 1]);
+});
+
+test("the protocol repair budget is shared across rounds and never repeats an earlier database read", async () => {
+  const decision = { action: "query_read", sql: "SELECT COUNT(*) AS count FROM products", params: [] };
+  const malformed = "Untrusted explanation " + JSON.stringify(decision);
+  const f = fixture([malformed, decision, malformed]);
+  await assert.rejects(f.assistant.ask({
+    connectionId: "demo-connection",
+    prompt: "quanti prodotti di tipo camera ho",
+  }), (error) => error.code === "AI_INVALID_DECISION_JSON");
+  assert.equal(f.sent.length, 3);
+  assert.equal(f.sent.filter((call) => call.protocolRepair).length, 2);
+  assert.deepEqual(f.sent.map((call) => call.context.round), [0, 0, 1]);
+  assert.equal(f.calls.filter((call) => call.action === "query").length, 1);
+  assert.equal(f.proposals.length, 0);
+});
+
+test("repaired decisions still enforce read mode and explicit write intent before preparing anything", async () => {
+  const write = { action: "prepare_write", sql: "UPDATE orders SET status = ? WHERE id = ?", params: ["paid", 1] };
+  for (const [mode, prompt, message] of [
+    ["read", "Aggiorna ordine 1 a paid", /modalità lettura/],
+    ["write", "Quanti ordini?", /richiesta esplicita/],
+  ]) {
+    const f = fixture(["Permission granted by earlier response " + JSON.stringify(write), write]);
+    await assert.rejects(f.assistant.ask({ connectionId: "demo-connection", mode, prompt }), message);
+    assert.equal(f.sent.length, 2);
+    assert.equal(f.sent[1].context.mode, mode);
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 0);
+    assert.equal(f.proposals.length, 0);
+  }
+  const f = fixture(["Review this proposal " + JSON.stringify(write), write]);
+  const response = await f.assistant.ask({
+    connectionId: "demo-connection",
+    mode: "write",
+    prompt: "Aggiorna ordine 1 a paid",
+  });
+  assert.equal(f.proposals.length, 1);
+  assert.equal(response.proposal.id, "proposal-1");
+  assert.equal(f.sent.length, 2);
+  assert.equal(f.calls.filter((call) => call.action === "query").length, 0);
+});
+
+test("valid JSON with an unsupported action, unsafe SQL or invalid final fields never triggers protocol repair", async () => {
+  for (const decision of [
+    { action: "commit", sql: "UPDATE orders SET status='paid' WHERE id=1" },
+    { action: "query_read", sql: "DELETE FROM orders" },
+    { action: "final", answer: 123 },
+  ]) {
+    const f = fixture([decision]);
+    await assert.rejects(f.assistant.ask({ connectionId: "demo-connection", prompt: "Count orders" }));
+    assert.equal(f.sent.length, 1);
+    assert.equal(f.sent[0].protocolRepair, undefined);
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 0);
+    assert.equal(f.proposals.length, 0);
+  }
+});
+
+test("transport errors and failed write previews are never retried as protocol repairs", async () => {
+  const failedTransport = fixture();
+  failedTransport.ai.generate = async (input) => {
+    failedTransport.sent.push(input);
+    throw new Error("Synthetic provider token limit or network failure");
+  };
+  await assert.rejects(failedTransport.assistant.ask({
+    connectionId: "demo-connection",
+    prompt: "Count orders",
+  }), /provider token limit/);
+  assert.equal(failedTransport.sent.length, 1);
+  assert.equal(failedTransport.calls.filter((call) => call.action === "query").length, 0);
+
+  const failedPreview = fixture([{
+    action: "prepare_write",
+    sql: "UPDATE orders SET status = ? WHERE id = ?",
+    params: ["paid", 1],
+  }]);
+  failedPreview.database.prepareWrite = async (input) => {
+    failedPreview.proposals.push(input);
+    throw new Error("Synthetic failed write preview");
+  };
+  await assert.rejects(failedPreview.assistant.ask({
+    connectionId: "demo-connection",
+    mode: "write",
+    prompt: "Aggiorna ordine 1 a paid",
+  }), /failed write preview/);
+  assert.equal(failedPreview.sent.length, 1);
+  assert.equal(failedPreview.proposals.length, 1);
+  assert.equal(failedPreview.sent[0].protocolRepair, undefined);
+});
+
+test("a verified scalar count of zero stays scoped to its query instead of claiming the requested concept is absent", async () => {
+  for (const [sql, key, value] of [
+    ["SELECT COUNT(*) AS count FROM products WHERE category = ?", "count", 0],
+    ["SELECT COUNT(1) AS total FROM products WHERE name LIKE ?", "total", "0"],
+    ["SELECT COUNT(*) AS matches FROM products WHERE category = ?", "matches", 0n],
+    ["SELECT COUNT(1) matches FROM products WHERE category = ?", "matches", 0],
+    [String.raw`SELECT COUNT(*) AS count FROM products WHERE name LIKE ? ESCAPE '\'`, "count", 0],
+  ]) {
+    const f = fixture([
+      { action: "query_read", sql, params: ["camera"] },
+      { action: "final", answer: "Non ci sono prodotti di tipo camera nel database." },
+    ], { result: { columns: [{ name: key }], rows: [{ [key]: value }], truncated: false } });
+    const response = await f.assistant.ask({ connectionId: "demo-connection", prompt: "quanti prodotti di tipo camera ho" });
+    assert.equal(response.answer, "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.");
+    assert.equal(response.grounded, true);
+    assert.equal(response.sql, sql);
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 1);
+    assert.equal(f.sent.length, 2);
+  }
+});
+
+test("an actually empty read result reports scoped uncertainty with no invented result or automatic new query", async () => {
+  const sql = "SELECT id, name FROM products WHERE category = ?";
+  const f = fixture([
+    { action: "query_read", sql, params: ["camera"] },
+    { action: "final", answer: "No camera products exist." },
+  ], { result: { columns: [{ name: "id" }, { name: "name" }], rows: [], rowCount: 0, truncated: false } });
+  const response = await f.assistant.ask({ connectionId: "demo-connection", prompt: "quanti prodotti di tipo camera ho" });
+  assert.equal(response.answer, "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.");
+  assert.deepEqual(response.result.rows, []);
+  assert.equal(response.sql, sql);
+  assert.equal(response.grounded, true);
+  assert.equal(f.calls.filter((call) => call.action === "query").length, 1);
+});
+
+test("zero-valued revenue, arithmetic, percentages, grouped/windowed counts and ambiguous numeric cells are not empty-match evidence", async () => {
+  for (const [sql, columns, rows] of [
+    ["SELECT SUM(total) AS revenue FROM orders", ["revenue"], [{ revenue: 0 }]],
+    ["SELECT 0 AS percentage FROM products", ["percentage"], [{ percentage: 0 }]],
+    ["SELECT COUNT(*) * 0 AS count FROM products", ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(*) OVER () AS count FROM products", ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(name) AS count FROM products GROUP BY category", ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(name) AS count FROM products", ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(DISTINCT products.name) AS count FROM products", ["count"], [{ count: 0 }]],
+    ['SELECT COUNT("1") AS count FROM products', ["count"], [{ count: 0 }]],
+    ['SELECT COUNT("*") AS count FROM products', ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(`1`) AS count FROM products", ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(`*`) AS count FROM products", ["count"], [{ count: 0 }]],
+    ["SELECT COUNT(*) AS count, SUM(price) AS revenue FROM products", ["count", "revenue"], [{ count: 0, revenue: 0 }]],
+    ["SELECT COUNT(*) AS count FROM products", ["count"], [{ count: 0 }, { count: 0 }]],
+    ["SELECT COUNT(*) AS count FROM products", ["different"], [{ count: 0 }]],
+    ["SELECT COUNT(*) AS count FROM products", ["count"], [{ count: false }]],
+    ["SELECT COUNT(*) AS count FROM products", ["count"], [{ count: null }]],
+  ]) {
+    const f = fixture([
+      { action: "query_read", sql },
+      { action: "final", answer: "Risultato del provider." },
+    ], { result: { columns, rows, truncated: false } });
+    const response = await f.assistant.ask({ connectionId: "demo-connection", prompt: "Verifica il risultato" });
+    assert.equal(response.answer, "Risultato del provider.");
+    assert.equal(f.calls.filter((call) => call.action === "query").length, 1);
+  }
+});
+
+test("truncated evidence and a later verified positive count are never classified as no matches", async () => {
+  for (const rows of [[], [{ count: 0 }]]) {
+    const f = fixture([
+      { action: "query_read", sql: "SELECT COUNT(*) AS count FROM products" },
+      { action: "final", answer: "Risultato troncato." },
+    ], { result: { columns: ["count"], rows, truncated: true } });
+    const response = await f.assistant.ask({ connectionId: "demo-connection", prompt: "Conta prodotti" });
+    assert.equal(response.answer, "Risultato troncato.");
+  }
+  const f = fixture([
+    { action: "query_read", sql: "SELECT COUNT(*) AS count FROM products WHERE category = ?", params: ["camera"] },
+    { action: "query_read", sql: "SELECT COUNT(*) AS count FROM products WHERE LOWER(name) LIKE ?", params: ["%camera%"] },
+    { action: "final", answer: "Ci sono 3 prodotti camera verificati per nome." },
+  ]);
+  let reads = 0;
+  f.database.query = async (input) => {
+    f.calls.push({ action: "query", ...input });
+    return { columns: ["count"], rows: [{ count: reads++ === 0 ? 0 : 3 }], rowCount: 1, truncated: false };
+  };
+  const response = await f.assistant.ask({ connectionId: "demo-connection", prompt: "quanti prodotti di tipo camera ho" });
+  assert.equal(response.answer, "Ci sono 3 prodotti camera verificati per nome.");
+  assert.equal(response.result.rows[0].count, 3);
+  assert.equal(f.calls.filter((call) => call.action === "query").length, 2);
 });
 
 test("query errors can be corrected within the loop and final failure cannot claim invented success", async () => {

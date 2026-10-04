@@ -338,8 +338,6 @@
   "insertOne richiede un documento.": "insertOne requires a document.",
   "Aggiornamento MongoDB non supportato.": "Unsupported MongoDB update.",
   "Risposta strutturata AI non valida.": "Invalid structured AI response.",
-  "Il modello deve restituire una decisione JSON valida. Nessuna query eseguita.": "The model must return a valid JSON decision. No query was executed.",
-  "Strumento AI non supportato. Nessuna azione eseguita.": "Unsupported AI tool. No action was performed.",
   "Risposta finale AI non valida.": "Invalid final AI response.",
   "Cronologia AI non valida.": "Invalid AI history.",
   "Servizi assistente non disponibili.": "Assistant services unavailable.",
@@ -515,5 +513,11 @@
   "Redis write command {command} is not supported.": "Redis write command {command} is not supported.",
   "Redis read command {command} is not supported.": "Redis read command {command} is not supported.",
   "Write exceeds the {max}-row commit limit and was rolled back.": "Write exceeds the {max}-row commit limit and was rolled back.",
-  "Function {name} is not allowed in protected queries.": "Function {name} is not allowed in protected queries."
+  "Function {name} is not allowed in protected queries.": "Function {name} is not allowed in protected queries.",
+  "Il modello deve restituire una decisione JSON valida. Nessuna ulteriore query eseguita.": "The model must return a valid JSON decision. No further query was executed.",
+  "Strumento AI non supportato. Nessuna ulteriore azione eseguita.": "Unsupported AI tool. No further action was performed.",
+  "Il modello ha raggiunto il limite di generazione prima di completare la decisione JSON. Nessuna ulteriore query eseguita: riprova con una richiesta più breve.": "The model reached its generation limit before completing the JSON decision. No further query was executed: try a shorter request.",
+  "Opzione di riparazione JSON non valida.": "Invalid JSON repair option.",
+  "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "The query count is 0. Check the filter before concluding that the requested data is absent.",
+  "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "The query returned no rows. Check the filter before concluding that the requested data is absent."
 }

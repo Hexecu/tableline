@@ -1,6 +1,6 @@
 {
   "name": "tableline",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "A fast local database workspace with grounded AI",
   "main": "electron/main.cjs",
@@ -15,7 +15,8 @@
     "release:check": "node scripts/release-macos.cjs --check",
     "verify:package": "node scripts/verify-package.cjs",
     "test:i18n": "node --test tests/i18n.test.cjs",
-    "test:e2e:locales": "node scripts/e2e-locales.cjs"
+    "test:e2e:locales": "node scripts/e2e-locales.cjs",
+    "test:e2e:ai": "node scripts/e2e-ai-selection.cjs"
   },
   "dependencies": {
     "react": "19.3.0",

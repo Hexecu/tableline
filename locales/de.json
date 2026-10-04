@@ -338,8 +338,6 @@
   "insertOne richiede un documento.": "insertOne benötigt ein Dokument.",
   "Aggiornamento MongoDB non supportato.": "Nicht unterstützte MongoDB-Aktualisierung.",
   "Risposta strutturata AI non valida.": "Ungültige strukturierte KI-Antwort.",
-  "Il modello deve restituire una decisione JSON valida. Nessuna query eseguita.": "Das Modell muss eine gültige JSON-Entscheidung liefern. Keine Abfrage ausgeführt.",
-  "Strumento AI non supportato. Nessuna azione eseguita.": "Nicht unterstütztes KI-Werkzeug. Keine Aktion ausgeführt.",
   "Risposta finale AI non valida.": "Ungültige abschließende KI-Antwort.",
   "Cronologia AI non valida.": "Ungültiger KI-Verlauf.",
   "Servizi assistente non disponibili.": "Assistentendienste nicht verfügbar.",
@@ -515,5 +513,11 @@
   "Redis write command {command} is not supported.": "Redis-Schreibbefehl {command} wird nicht unterstützt.",
   "Redis read command {command} is not supported.": "Redis-Lesebefehl {command} wird nicht unterstützt.",
   "Write exceeds the {max}-row commit limit and was rolled back.": "Schreiben überschreitet das Limit von {max} Zeilen und wurde zurückgesetzt.",
-  "Function {name} is not allowed in protected queries.": "Funktion {name} ist in geschützten Abfragen nicht erlaubt."
+  "Function {name} is not allowed in protected queries.": "Funktion {name} ist in geschützten Abfragen nicht erlaubt.",
+  "Il modello deve restituire una decisione JSON valida. Nessuna ulteriore query eseguita.": "Das Modell muss eine gültige JSON-Entscheidung liefern. Keine weitere Abfrage ausgeführt.",
+  "Strumento AI non supportato. Nessuna ulteriore azione eseguita.": "Nicht unterstütztes KI-Werkzeug. Keine weitere Aktion ausgeführt.",
+  "Il modello ha raggiunto il limite di generazione prima di completare la decisione JSON. Nessuna ulteriore query eseguita: riprova con una richiesta più breve.": "Das Modell hat sein Generierungslimit vor Abschluss der JSON-Entscheidung erreicht. Keine weitere Abfrage ausgeführt: versuche eine kürzere Anfrage.",
+  "Opzione di riparazione JSON non valida.": "Ungültige Option zur JSON-Korrektur.",
+  "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "Die Abfrage ergibt eine Anzahl von 0. Prüfe den Filter, bevor du daraus schließt, dass die gesuchten Daten fehlen.",
+  "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "Die Abfrage hat keine Zeilen zurückgegeben. Prüfe den Filter, bevor du daraus schließt, dass die gesuchten Daten fehlen."
 }

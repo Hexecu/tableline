@@ -25,7 +25,7 @@ const FORBIDDEN = new Set(
   ),
 );
 
-function tokenize(sql) {
+function tokenize(sql, dialect = "unknown") {
   if (typeof sql !== "string" || !sql.trim())
     throw new Error("Enter a SQL statement.");
   if (sql.length > 100000 || sql.includes("\0"))
@@ -38,7 +38,10 @@ function tokenize(sql) {
       continue;
     }
     if (c === "-" && sql[i + 1] === "-") {
-      i = sql.indexOf("\n", i + 2);
+      const end = sql.indexOf("\n", i + 2);
+      if (sql.slice(i, end < 0 ? sql.length : end).includes("\\"))
+        throw new Error("Bind backslash-containing values as parameters.");
+      i = end;
       if (i < 0) break;
       continue;
     }
@@ -50,6 +53,8 @@ function tokenize(sql) {
       const end = sql.indexOf("*/", i + 2);
       if (end < 0 || sql.slice(i + 2, end).includes("/*"))
         throw new Error("Unclosed or nested SQL comment.");
+      if (sql.slice(i + 2, end).includes("\\"))
+        throw new Error("Bind backslash-containing values as parameters.");
       i = end + 2;
       continue;
     }
@@ -75,7 +80,10 @@ function tokenize(sql) {
       let value = "",
         closed = false;
       while (i < sql.length) {
-        if (sql[i] === "\\")
+        // SQLite backslashes are ordinary characters in single-quoted strings,
+        // including the one-character literal used by LIKE ... ESCAPE '\'.
+        // They never consume a following quote. Other dialects stay strict.
+        if (sql[i] === "\\" && (dialect !== "sqlite" || c !== "'"))
           throw new Error("Bind backslash-containing values as parameters.");
         if (sql[i] === close) {
           if (sql[i + 1] === close) {
@@ -98,6 +106,8 @@ function tokenize(sql) {
       });
       continue;
     }
+    if (c === "\\")
+      throw new Error("Bind backslash-containing values as parameters.");
     const word = sql.slice(i).match(/^[A-Za-z_][A-Za-z_0-9$]*/);
     if (word) {
       tokens.push({
@@ -120,8 +130,8 @@ function tokenize(sql) {
   return tokens;
 }
 
-function guardSql(sql, mode = "read") {
-  const tokens = tokenize(sql),
+function guardSql(sql, mode = "read", dialect = "unknown") {
+  const tokens = tokenize(sql, dialect),
     first = tokens[0].value;
   if (mode === "read" && !["SELECT", "WITH", "EXPLAIN"].includes(first))
     throw new Error("Read mode accepts SELECT, WITH, and EXPLAIN SELECT only.");

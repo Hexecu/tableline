@@ -615,7 +615,7 @@ class DatabaseService {
         const profile = this.profile(connectionId),
           adapter = await this.ensureAdapter(connectionId);
         const statement = this.describe(profile).capabilities.sql
-          ? guardSql(sql, "read").sql
+          ? guardSql(sql, "read", profile.driver).sql
           : sql;
         return this.output(
           await adapter.read(statement, bound, pageLimit, { requestId }),
@@ -778,7 +778,7 @@ class DatabaseService {
           throw new Error(
             "Writes are unavailable for this driver: transaction preview is not supported.",
           );
-        const statement = cap.sql ? guardSql(sql, "write").sql : sql;
+        const statement = cap.sql ? guardSql(sql, "write", profile.driver).sql : sql;
         const adapter = await this.ensureAdapter(connectionId);
         const preview = adapter.preview
           ? await adapter.preview(statement, bound)
