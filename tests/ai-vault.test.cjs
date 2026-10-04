@@ -331,8 +331,9 @@ test("availability and encryption timeouts cannot persist plaintext or late ciph
 
 test("async decrypt timeout preserves ciphertext and does not block other metadata reads", async (t) => {
   const storage = mockStorage(),
-    { directory, vault } = fixture(t, storage, { timeoutMs: 35 });
-  await vault.set("ai-existing", { apiKey: FIRST });
+    { directory, vault: setupVault } = fixture(t, storage);
+  await setupVault.set("ai-existing", { apiKey: FIRST });
+  const vault = new AIVault({ directory, safeStorage: storage, timeoutMs: 35 });
   const before = fs.readFileSync(vault.file);
   storage.decryptStringAsync = () => new Promise(() => {});
   await rejectsWithoutSecret(() => vault.get("ai-existing"));
@@ -596,8 +597,11 @@ test("timed-out encryption preserves ciphertext and blocks retries across vault 
     encrypt = storage.encryptStringAsync,
     release = deferred();
   let encryptions = 0;
-  const { directory, vault } = fixture(t, storage, { timeoutMs: 35 });
-  await vault.set("ai-existing", { apiKey: FIRST });
+  // Filesystem setup uses the normal deadline; only the pending native call
+  // below needs the short timeout under test.
+  const { directory, vault: setupVault } = fixture(t, storage);
+  await setupVault.set("ai-existing", { apiKey: FIRST });
+  const vault = new AIVault({ directory, safeStorage: storage, timeoutMs: 35 });
   const before = fs.readFileSync(vault.file);
   storage.encryptStringAsync = () => {
     encryptions++;
@@ -622,7 +626,7 @@ test("timed-out encryption preserves ciphertext and blocks retries across vault 
   assert.equal(vault.status(), "blocked");
   assert.deepEqual(fs.readFileSync(vault.file), before);
   assert.deepEqual(diskFiles(another.directory), []);
-  await vault.delete("ai-existing");
+  await setupVault.delete("ai-existing");
   assert.equal(await vault.has("ai-existing"), false);
   assertNoPlaintext(directory, [FIRST, SECOND]);
 });
@@ -630,8 +634,9 @@ test("timed-out encryption preserves ciphertext and blocks retries across vault 
 test("timed-out decryption quarantines native operations but leaves metadata deletion usable", async (t) => {
   const storage = mockStorage(),
     release = deferred();
-  const { directory, vault } = fixture(t, storage, { timeoutMs: 35 });
-  await vault.set("ai-existing", { apiKey: FIRST });
+  const { directory, vault: setupVault } = fixture(t, storage);
+  await setupVault.set("ai-existing", { apiKey: FIRST });
+  const vault = new AIVault({ directory, safeStorage: storage, timeoutMs: 35 });
   let decryptions = 0;
   storage.decryptStringAsync = () => {
     decryptions++;
@@ -709,8 +714,9 @@ test("a queued native timeout blocks the active request and never starts queued 
   const storage = mockStorage(),
     release = deferred(),
     started = deferred();
-  const first = fixture(t, storage, { timeoutMs: 500 }).vault;
-  await first.set("ai-existing", { apiKey: FIRST });
+  const { directory, vault: setupVault } = fixture(t, storage);
+  await setupVault.set("ai-existing", { apiKey: FIRST });
+  const first = new AIVault({ directory, safeStorage: storage, timeoutMs: 500 });
   storage.decryptStringAsync = () => {
     started.resolve();
     return release.promise;
