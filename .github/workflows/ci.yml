@@ -96,18 +96,24 @@ jobs:
         run: xvfb-run -a npm run test:platform
       - name: Run packaged platform acceptance on macOS and Windows
         if: runner.os != 'Linux'
+        env:
+          DEBUG: ${{ runner.os == 'Windows' && 'pw:browser' || '' }}
         run: npm run test:platform
       - name: Run all five languages in the Linux package
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:e2e:locales
       - name: Run all five languages in the macOS and Windows package
         if: runner.os != 'Linux'
+        env:
+          DEBUG: ${{ runner.os == 'Windows' && 'pw:browser' || '' }}
         run: npm run test:e2e:locales
       - name: Verify packaged AI configuration on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:e2e:ai
       - name: Verify packaged AI configuration on macOS and Windows
         if: runner.os != 'Linux'
+        env:
+          DEBUG: ${{ runner.os == 'Windows' && 'pw:browser' || '' }}
         run: npm run test:e2e:ai
       - name: Verify real encrypted credential persistence in a disposable Linux keyring
         if: runner.os == 'Linux'
@@ -117,6 +123,8 @@ jobs:
         run: xvfb-run -a node scripts/e2e-storage-fallback.cjs
       - name: Verify real encrypted credential persistence with Windows DPAPI
         if: runner.os == 'Windows'
+        env:
+          DEBUG: pw:browser
         run: node scripts/e2e-storage.cjs
       - name: Upload reports only; compiled applications are never uploaded
         if: always()

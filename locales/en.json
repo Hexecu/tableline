@@ -521,5 +521,6 @@
   "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "The query count is 0. Check the filter before concluding that the requested data is absent.",
   "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "The query returned no rows. Check the filter before concluding that the requested data is absent.",
   "This Databricks warehouse requires the SEA native kernel. Tableline supports Thrift SQL warehouses; choose a compatible warehouse.": "This Databricks warehouse requires the SEA native kernel. Tableline supports Thrift SQL warehouses; choose a compatible warehouse.",
-  "La cifratura credenziali di Linux non è sicura. Sblocca il portachiavi, riapri l’app e importa nuovamente le credenziali.": "Linux credential encryption is not secure. Unlock the keyring, reopen the app and import the credentials again."
+  "La cifratura credenziali di Linux non è sicura. Sblocca il portachiavi, riapri l’app e importa nuovamente le credenziali.": "Linux credential encryption is not secure. Unlock the keyring, reopen the app and import the credentials again.",
+  "Formato archivio credenziali non valido.": "Invalid credential archive format."
 }

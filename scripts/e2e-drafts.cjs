@@ -31,6 +31,8 @@ const bounded = async (promise, label, ms = 15000) => {
   }
 };
 async function launch() {
+  const launchEnv = { ...process.env, TABLELINE_DEV_URL: "" };
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({
     executablePath: process.env.TABLELINE_E2E_EXECUTABLE || require("electron"),
     args: [
@@ -38,7 +40,7 @@ async function launch() {
       "--tableline-qa",
       `--tableline-data=${directory}`,
     ],
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "", TABLELINE_DEV_URL: "" },
+    env: launchEnv,
     timeout: 15000,
   });
   page = await app.firstWindow();

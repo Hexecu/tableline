@@ -12,11 +12,13 @@ const children = new Set();
 let ending = false;
 
 function run(command, args, env = {}) {
+  const launchEnv = { ...process.env, ...env };
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   const child = spawn(command, args, {
     cwd: root,
     stdio: "inherit",
     detached: process.platform !== "win32",
-    env: { ...process.env, ...env },
+    env: launchEnv,
   });
   children.add(child);
   child.once("exit", (code) => {
@@ -68,7 +70,6 @@ async function waitForServer() {
     if (available) {
       run(require("electron"), ["."], {
         TABLELINE_DEV_URL: "http://127.0.0.1:5188",
-        ELECTRON_RUN_AS_NODE: "",
       });
       return;
     }

@@ -1094,3 +1094,87 @@ test("repair instructions count toward the existing input byte budget", async (t
   );
   assert.equal(calls.length, 1);
 });
+
+
+async function weakCredentialFixture(t) {
+  const { AIVault } = require("../electron/ai-vault.cjs");
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "tableline-ai-weak-recovery-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  let decryptions = 0;
+  const safeStorage = {
+    isAsyncEncryptionAvailable: async () => true,
+    getSelectedStorageBackend: () => "gnome_libsecret",
+    async encryptStringAsync(value) {
+      const bytes = Buffer.from(value);
+      for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
+      return Buffer.concat([Buffer.from("v11"), bytes]);
+    },
+    async decryptStringAsync(value) {
+      decryptions++;
+      assert.equal(value.subarray(0, 3).toString(), "v11", "weak ciphertext must never reach native decryption");
+      const bytes = Buffer.from(value.subarray(3));
+      for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
+      return { result: bytes.toString(), shouldReEncrypt: false };
+    },
+  };
+  const vault = new AIVault({ directory, safeStorage, platform: "linux" });
+  const { service } = await fixture(t, undefined, { vault });
+  await service.save({ id: "weak", provider: "litellm", model: "exact-fixture-model" },
+    { apiKey: "synthetic-old-weak-key", bearerToken: "synthetic-old-weak-token" });
+  const data = JSON.parse(await fs.readFile(vault.file, "utf8"));
+  const bytes = Buffer.from(data.credentials["ai-weak"], "base64");
+  data.credentials["ai-weak"] = Buffer.concat([Buffer.from("v10"), bytes.subarray(3)]).toString("base64");
+  await fs.writeFile(vault.file, JSON.stringify(data));
+  return { service, vault, decryptions: () => decryptions };
+}
+
+for (const operation of ["replace", "clear", "remove"]) {
+  test(`AI profile ${operation} recovers weak Linux credentials without native decryption`, async t => {
+    const { service, vault, decryptions } = await weakCredentialFixture(t);
+    if (operation === "replace")
+      await service.save({ id: "weak" }, { apiKey: "synthetic-safe-replacement" });
+    else if (operation === "clear") await service.save({ id: "weak" }, {});
+    else await service.remove("weak");
+    assert.equal(decryptions(), 0);
+    if (operation === "replace")
+      assert.deepEqual(await vault.get("ai-weak"), { apiKey: "synthetic-safe-replacement" });
+    else assert.equal(await vault.has("ai-weak"), false);
+    const settings = await service.settings();
+    if (operation === "remove") assert.equal(settings.profiles.some(p => p.id === "weak"), false);
+    else assert.equal(settings.profiles.find(p => p.id === "weak").hasCredential, operation === "replace");
+  });
+  test(`AI profile failed ${operation} restores exact old ciphertext without native decryption`, async t => {
+    const { service, vault, decryptions } = await weakCredentialFixture(t);
+    const before = await fs.readFile(vault.file);
+    service.persist = async () => { throw new Error("Synthetic metadata persistence failure"); };
+    const work = operation === "remove" ? service.remove("weak")
+      : service.save({ id: "weak", name: "Unpersisted rename" }, operation === "clear" ? {} : { apiKey: "synthetic-safe-replacement" });
+    await assert.rejects(work, /Synthetic metadata persistence failure/);
+    assert.deepEqual(await fs.readFile(vault.file), before);
+    assert.equal(decryptions(), 0);
+    assert.equal((await service.settings()).profiles.some(p => p.id === "weak"), true);
+  });
+}
+
+test("empty AI form fields edit metadata without decrypting a weak stored credential", async t => {
+  const { service, vault, decryptions } = await weakCredentialFixture(t);
+  const before = await fs.readFile(vault.file);
+  await service.save({ id: "weak", name: "Metadata rename" }, { apiKey: "" });
+  assert.deepEqual(await fs.readFile(vault.file), before);
+  assert.equal(decryptions(), 0);
+  assert.equal((await service.settings()).profiles.find(p => p.id === "weak").name, "Metadata rename");
+});
+
+test("failed AI profile save preserves a concurrent credential replacement instead of rolling it back", async t => {
+  const { service, vault, decryptions } = await weakCredentialFixture(t);
+  const set = vault.set.bind(vault);
+  vault.set = async (id, credentials) => {
+    const receipt = await set(id, credentials);
+    await set(id, { apiKey: "synthetic-concurrent-owner-key" });
+    return receipt;
+  };
+  service.persist = async () => { throw new Error("Synthetic metadata persistence failure"); };
+  await assert.rejects(service.save({ id: "weak" }, { apiKey: "synthetic-safe-replacement" }), /Synthetic metadata persistence failure/);
+  assert.equal(decryptions(), 0);
+  assert.deepEqual(await vault.get("ai-weak"), { apiKey: "synthetic-concurrent-owner-key" });
+});

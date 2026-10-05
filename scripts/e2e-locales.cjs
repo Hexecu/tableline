@@ -24,10 +24,12 @@ const bounded = async (work, label, ms = 20000) => {
   } finally { clearTimeout(timer); }
 };
 async function launch() {
+  const launchEnv = {...process.env, TABLELINE_DEV_URL: ''};
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({
     executablePath: process.env.TABLELINE_E2E_EXECUTABLE || require('electron'),
     args: [...(packaged ? [] : [path.join(root,'electron/main.cjs')]), '--tableline-qa', `--tableline-data=${directory}`],
-    env: {...process.env, ELECTRON_RUN_AS_NODE: '', TABLELINE_DEV_URL: ''},
+    env: launchEnv,
     timeout: 20000,
   });
   await app.evaluate(({safeStorage}) => {

@@ -129,6 +129,8 @@ function infer(body) {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const executablePath =
     process.env.TABLELINE_E2E_EXECUTABLE || require("electron");
+  const launchEnv = { ...process.env, TABLELINE_DEV_URL: "" };
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({
     executablePath,
     args: [
@@ -138,7 +140,7 @@ function infer(body) {
       "--tableline-qa",
       `--tableline-data=${directory}`,
     ],
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "", TABLELINE_DEV_URL: "" },
+    env: launchEnv,
     timeout: 45000,
   });
   page = await app.firstWindow({ timeout: 15000 });

@@ -437,6 +437,162 @@ test("secrets require a vault and malformed persisted metadata is not overwritte
   assert.equal(await fs.readFile(filename, "utf8"), "{broken");
   await fs.rm(local, { recursive: true });
 });
+
+async function databaseRecoveryFixture(t, weak = true) {
+  const { AIVault } = require("../electron/ai-vault.cjs");
+  const local = await fs.mkdtemp(path.join(os.tmpdir(), "tableline-db-recovery-"));
+  let decryptions = 0;
+  // Synthetic ciphertext only. OS-backed acceptance runs separately on each
+  // native Linux/Windows runner; this fixture never opens a system keychain.
+  const safeStorage = {
+    isAsyncEncryptionAvailable: async () => true,
+    getSelectedStorageBackend: () => "gnome_libsecret",
+    async encryptStringAsync(value) {
+      const bytes = Buffer.from(value);
+      for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
+      return Buffer.concat([Buffer.from("v11"), bytes]);
+    },
+    async decryptStringAsync(value) {
+      decryptions++;
+      assert.equal(value.subarray(0, 3).toString(), "v11",
+        "rejected weak ciphertext must never reach native decryption");
+      const bytes = Buffer.from(value.subarray(3));
+      for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
+      return { result: bytes.toString(), shouldReEncrypt: false };
+    },
+  };
+  const vault = new AIVault({ directory: path.join(local, "vault"), safeStorage, platform: "linux" });
+  const service = new DatabaseService({ directory: path.join(local, "metadata"), vault });
+  t.after(async () => {
+    await service.close();
+    await fs.rm(local, { recursive: true, force: true });
+  });
+  await service.saveConnection({ id: "recover", driver: "postgres", name: "Original profile", host: "localhost" },
+    { password: "synthetic-old-password", token: "synthetic-old-token" });
+  if (weak) {
+    const data = JSON.parse(await fs.readFile(vault.file, "utf8"));
+    const bytes = Buffer.from(data.credentials["db-recover"], "base64");
+    data.credentials["db-recover"] = Buffer.concat([Buffer.from("v10"), bytes.subarray(3)]).toString("base64");
+    await fs.writeFile(vault.file, JSON.stringify(data));
+  }
+  return { service, vault, decryptions: () => decryptions };
+}
+
+test("explicit DB credential reimport replaces weak Linux ciphertext without decrypting or merging cached secrets", async t => {
+  const { service, vault, decryptions } = await databaseRecoveryFixture(t);
+  assert.ok(service.secrets.get("recover").token, "fixture exercises a populated old cache");
+  await service.saveConnection({ id: "recover", driver: "postgres", name: "Recovered profile" },
+    { password: "synthetic-safe-replacement" });
+  assert.equal(decryptions(), 0);
+  assert.deepEqual(service.secrets.get("recover"), { password: "synthetic-safe-replacement" });
+  assert.deepEqual(await vault.get("db-recover"), { password: "synthetic-safe-replacement" });
+  assert.equal(service.profile("recover").name, "Recovered profile");
+});
+
+test("healthy DB credential replacement retains other encrypted credential fields", async t => {
+  const { service, vault } = await databaseRecoveryFixture(t, false);
+  service.secrets.clear();
+  await service.saveConnection({ id: "recover", driver: "postgres", name: "Updated profile" },
+    { password: "synthetic-safe-replacement" });
+  assert.deepEqual(await vault.get("db-recover"), {
+    password: "synthetic-safe-replacement", token: "synthetic-old-token",
+  });
+});
+
+for (const operation of ["replace", "remove"]) {
+  test(`failed DB ${operation} restores exact weak ciphertext and metadata without native decryption`, async t => {
+    const { service, vault, decryptions } = await databaseRecoveryFixture(t);
+    const oldCipher = await fs.readFile(vault.file);
+    const oldMetadata = await fs.readFile(service.file);
+    service.persist = async () => { throw new Error("Synthetic metadata persistence failure"); };
+    const work = operation === "remove" ? service.removeConnection("recover")
+      : service.saveConnection({ id: "recover", driver: "postgres", name: "Unpersisted rename" },
+          { password: "synthetic-safe-replacement" });
+    await assert.rejects(work, /Synthetic metadata persistence failure/);
+    assert.deepEqual(await fs.readFile(vault.file), oldCipher);
+    assert.deepEqual(await fs.readFile(service.file), oldMetadata);
+    assert.equal(decryptions(), 0);
+    assert.equal(service.profile("recover").name, "Original profile");
+    if (operation === "replace") assert.equal(service.secrets.has("recover"), false);
+  });
+}
+
+test("failed DB adapter disposal restores encrypted replacement and leaves the original profile disconnected", async t => {
+  const { service, vault, decryptions } = await databaseRecoveryFixture(t);
+  const oldCipher = await fs.readFile(vault.file);
+  const oldMetadata = await fs.readFile(service.file);
+  service.adapters.set("recover", { close: async () => { throw new Error("Synthetic disposal failure"); } });
+  await assert.rejects(service.saveConnection({ id: "recover", driver: "postgres", name: "Unpersisted rename" },
+    { password: "synthetic-safe-replacement" }), /Synthetic disposal failure/);
+  assert.deepEqual(await fs.readFile(vault.file), oldCipher);
+  assert.deepEqual(await fs.readFile(service.file), oldMetadata);
+  assert.equal(decryptions(), 0);
+  assert.equal(service.profile("recover").name, "Original profile");
+  assert.equal(service.adapters.has("recover"), false);
+});
+
+test("DB metadata permission failure occurs before rename and restores the previous credential transaction", async t => {
+  const { service, vault } = await databaseRecoveryFixture(t, false);
+  const oldCipher = await fs.readFile(vault.file);
+  const oldMetadata = await fs.readFile(service.file);
+  const chmod = fs.chmod;
+  fs.chmod = async (file, mode) => {
+    if (String(file).startsWith(service.file + ".") && String(file).endsWith(".tmp"))
+      throw new Error("Synthetic metadata permissions failure");
+    return chmod(file, mode);
+  };
+  try {
+    await assert.rejects(service.saveConnection({ id: "recover", driver: "postgres", name: "Unpersisted rename" },
+      { password: "synthetic-safe-replacement" }), /Synthetic metadata permissions failure/);
+  } finally { fs.chmod = chmod; }
+  assert.deepEqual(await fs.readFile(vault.file), oldCipher);
+  assert.deepEqual(await fs.readFile(service.file), oldMetadata);
+  assert.deepEqual(await fs.readdir(service.directory), ["connections.json"]);
+  assert.equal(service.profile("recover").name, "Original profile");
+  assert.deepEqual(service.secrets.get("recover"), { password: "synthetic-old-password", token: "synthetic-old-token" });
+});
+
+test("DB weak credential deletion and empty-field metadata edits never require native decryption", async t => {
+  const { service, vault, decryptions } = await databaseRecoveryFixture(t);
+  const oldCipher = await fs.readFile(vault.file);
+  await service.saveConnection({ id: "recover", driver: "postgres", name: "Metadata rename" }, { password: "" });
+  assert.deepEqual(await fs.readFile(vault.file), oldCipher);
+  await service.removeConnection("recover");
+  assert.equal(await vault.has("db-recover"), false);
+  assert.equal(service.profiles.length, 0);
+  assert.equal(service.secrets.has("recover"), false);
+  assert.equal(decryptions(), 0);
+});
+
+test("failed DB save preserves concurrent vault replacement and invalidates cached credentials", async t => {
+  const { service, vault } = await databaseRecoveryFixture(t, false);
+  const set = vault.set.bind(vault);
+  vault.set = async (id, credentials) => {
+    const receipt = await set(id, credentials);
+    await set(id, { password: "synthetic-concurrent-owner-password" });
+    return receipt;
+  };
+  service.persist = async () => { throw new Error("Synthetic metadata persistence failure"); };
+  await assert.rejects(service.saveConnection({ id: "recover", driver: "postgres", name: "Unpersisted rename" },
+    { password: "synthetic-safe-replacement" }), /Synthetic metadata persistence failure/);
+  assert.deepEqual(await vault.get("db-recover"), { password: "synthetic-concurrent-owner-password" });
+  assert.equal(service.secrets.has("recover"), false);
+  assert.equal(service.profile("recover").name, "Original profile");
+});
+
+for (const code of ["SECURE_STORAGE_TIMEOUT", "SECURE_STORAGE_BLOCKED", "CORRUPT_STORAGE"]) {
+  test(`DB credential reimport propagates ${code} without overwriting the vault`, async t => {
+    const { service, vault } = await databaseRecoveryFixture(t, false);
+    const oldCipher = await fs.readFile(vault.file);
+    const oldMetadata = await fs.readFile(service.file);
+    vault.get = async () => { throw Object.assign(new Error("Synthetic credential failure"), { code }); };
+    await assert.rejects(service.saveConnection({ id: "recover", driver: "postgres", name: "Unpersisted rename" },
+      { password: "synthetic-safe-replacement" }), error => error.code === code);
+    assert.deepEqual(await fs.readFile(vault.file), oldCipher);
+    assert.deepEqual(await fs.readFile(service.file), oldMetadata);
+    assert.deepEqual(service.secrets.get("recover"), { password: "synthetic-old-password", token: "synthetic-old-token" });
+  });
+}
 test("catalog reports unverified rollback engines honestly", async () => {
   const catalog = await db.catalog();
   assert.equal(catalog.length, 13);

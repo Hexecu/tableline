@@ -29,11 +29,14 @@ const check = async (name, work) => {
   const executablePath = process.platform === "darwin" ? path.join(bundle, "Contents", "MacOS", "Tableline")
     : path.join(bundle, process.platform === "win32" ? "Tableline.exe" : "tableline");
   directory = await fs.mkdtemp(path.join(os.tmpdir(), "tableline-platform-東京-"));
+  const launchEnv = { ...process.env, TABLELINE_DEV_URL: "" };
+  // Windows treats an empty ELECTRON_RUN_AS_NODE value as present.
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({
     executablePath,
     chromiumSandbox: true,
     args: ["--tableline-qa", `--tableline-data=${directory}`, `--tableline-export=${path.join(directory, "exports")}`],
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "", TABLELINE_DEV_URL: "" },
+    env: launchEnv,
     timeout: 45000,
   });
   await app.evaluate(({ safeStorage }) => {

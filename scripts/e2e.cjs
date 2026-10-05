@@ -174,6 +174,8 @@ async function launch() {
   const entry = process.env.TABLELINE_E2E_EXECUTABLE
     ? []
     : [path.join(root, "electron", "main.cjs")];
+  const launchEnv = { ...process.env, TABLELINE_DEV_URL: "" };
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({
     executablePath,
     args: [
@@ -182,7 +184,7 @@ async function launch() {
       `--tableline-data=${temporary}`,
       `--tableline-export=${path.join(temporary, "exports")}`,
     ],
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "", TABLELINE_DEV_URL: "" },
+    env: launchEnv,
     timeout: 45_000,
   });
   page = await app.firstWindow({ timeout: 15_000 });

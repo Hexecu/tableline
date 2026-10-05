@@ -264,15 +264,15 @@ class DatabaseService {
       if (this.tails.get(key) === task) this.tails.delete(key);
     }
   }
-  async persist() {
+  async persist(profiles = this.profiles) {
     const temp = `${this.file}.${crypto.randomUUID()}.tmp`;
     try {
-      await fs.writeFile(temp, JSON.stringify(this.profiles, null, 2) + "\n", {
+      await fs.writeFile(temp, JSON.stringify(profiles, null, 2) + "\n", {
         mode: 0o600,
         flag: "wx",
       });
+      await fs.chmod(temp, 0o600);
       await fs.rename(temp, this.file);
-      await fs.chmod(this.file, 0o600);
     } finally {
       await fs.unlink(temp).catch(() => {});
     }
@@ -395,26 +395,32 @@ class DatabaseService {
         if (value) secret[key] = value;
       }
       return this.serial(id, async () => {
+        const previousProfiles = this.profiles;
+        let backup, expected, merged;
         if (Object.keys(secret).length) {
           if (!this.vault?.set)
             throw new Error(
               "Credential vault is unavailable. Credentials cannot be stored securely.",
             );
-          const merged = {
-            ...(this.secrets.get(id) ||
-              (await this.vault.get?.(`db-${id}`)) ||
-              {}),
-            ...secret,
-          };
-          await this.vault.set(`db-${id}`, merged);
-          this.secrets.set(id, merged);
+          backup = await this.backupCredentials(id);
+          merged = { ...backup.credentials, ...secret };
+          // The receipt belongs to this exact mutation. Reading the vault
+          // afterwards could capture a concurrent replacement as our own.
+          expected = await this.vault.set(backup.key, merged);
         }
-        await this.dispose(id);
+        const nextProfiles = current
+          ? previousProfiles.map((p) => p.id === id ? clean : p)
+          : [...previousProfiles, clean];
+        try {
+          await this.dispose(id);
+          await this.persist(nextProfiles);
+        } catch (error) {
+          if (backup) await this.restoreCredentials(id, backup, expected);
+          throw error;
+        }
+        this.profiles = nextProfiles;
+        if (merged) this.secrets.set(id, merged);
         this.invalidate(id);
-        const index = this.profiles.findIndex((p) => p.id === id);
-        if (index < 0) this.profiles.push(clean);
-        else this.profiles[index] = clean;
-        await this.persist();
         return {
           ...clean,
           status: "disconnected",
@@ -422,6 +428,41 @@ class DatabaseService {
         };
       });
     });
+  }
+  async backupCredentials(id, readCredentials = true) {
+    const key = `db-${id}`;
+    const encryptedRollback = typeof this.vault?.snapshot === "function" &&
+      typeof this.vault?.restore === "function";
+    const ciphertext = encryptedRollback ? await this.vault.snapshot(key) : null;
+    let credentials = {};
+    if (readCredentials || !encryptedRollback) {
+      try {
+        credentials = this.vault?.get
+          ? (await this.vault.get(key)) || {}
+          : this.secrets.get(id) || {};
+      } catch (error) {
+        if (error.code !== "SECURE_STORAGE_INSECURE" || !encryptedRollback)
+          throw error;
+        // Only an explicit credential replacement can discard a rejected
+        // entry. Never merge a previously cached secret from that entry.
+        this.secrets.delete(id);
+      }
+    }
+    return { key, credentials, encryptedRollback, ciphertext };
+  }
+  async restoreCredentials(id, backup, expected) {
+    try {
+      if (backup.encryptedRollback) {
+        const restored = await this.vault.restore(backup.key, backup.ciphertext, expected);
+        // Another writer won the CAS; reconnect must read its current entry.
+        if (!restored) this.secrets.delete(id);
+      } else if (Object.keys(backup.credentials).length)
+        await this.vault.set(backup.key, backup.credentials);
+      else await this.vault?.delete?.(backup.key);
+    } catch (error) {
+      this.secrets.delete(id);
+      throw error;
+    }
   }
   invalidate(id) {
     this.revisions.set(id, (this.revisions.get(id) || 0) + 1);
@@ -434,11 +475,19 @@ class DatabaseService {
       this.serial(id, async () => {
         this.profile(id);
         await this.dispose(id);
-        await this.vault?.delete?.(`db-${id}`);
+        const previousProfiles = this.profiles;
+        const backup = await this.backupCredentials(id, false);
+        const expected = await this.vault?.delete?.(backup.key);
+        const nextProfiles = previousProfiles.filter((p) => p.id !== id);
+        try {
+          await this.persist(nextProfiles);
+        } catch (error) {
+          await this.restoreCredentials(id, backup, expected);
+          throw error;
+        }
+        this.profiles = nextProfiles;
         this.secrets.delete(id);
         this.invalidate(id);
-        this.profiles = this.profiles.filter((p) => p.id !== id);
-        await this.persist();
         return { removed: true };
       }),
     );

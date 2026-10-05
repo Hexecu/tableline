@@ -46,10 +46,12 @@ const check = async (name, work) => {
     profiles: [{ id: "gateway", name: "LiteLLM QA", provider: "litellm", baseUrl: endpoint, model: "", authMode: "none" }],
     activeProfileId: "gateway",
   }), { mode: 0o600 });
+  const launchEnv = { ...process.env, TABLELINE_DEV_URL: "" };
+  delete launchEnv.ELECTRON_RUN_AS_NODE;
   app = await electron.launch({
     executablePath: process.env.TABLELINE_E2E_EXECUTABLE || require("electron"),
     args: [...(process.env.TABLELINE_E2E_EXECUTABLE ? [] : [path.join(root, "electron/main.cjs")]), "--tableline-qa", `--tableline-data=${directory}`],
-    env: { ...process.env, ELECTRON_RUN_AS_NODE: "", TABLELINE_DEV_URL: "" },
+    env: launchEnv,
     timeout: 20000,
   });
   await app.evaluate(({ safeStorage }) => {
