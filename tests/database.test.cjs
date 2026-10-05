@@ -380,7 +380,9 @@ test("metadata is atomic, private, and contains no credential payload", async ()
     assert.ok(!text.includes("secret-"));
     assert.ok(!text.includes("MUST-NOT-PERSIST"));
     assert.equal(JSON.parse(text).length, 8);
-    assert.equal(
+    // Windows reports synthetic POSIX mode bits; access control belongs to its
+    // ACLs/OS encryption, which native credential acceptance exercises separately.
+    if (process.platform !== "win32") assert.equal(
       (await fs.stat(path.join(local, "connections.json"))).mode & 0o777,
       0o600,
     );

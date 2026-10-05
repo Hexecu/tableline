@@ -34,17 +34,20 @@ function sourceFiles(sourceRoot) {
 }
 
 function verifyArchiveContents(archive, { sourceRoot = root, archiveAPI = asar } = {}) {
+  // ASAR's API splits directory keys using the host's path.sep. Evidence keeps
+  // portable slash paths; nested lookups must use native separators on Windows.
+  const extract = entry => archiveAPI.extractFile(archive, entry.split("/").join(path.sep));
   const expected = JSON.parse(fs.readFileSync(path.join(sourceRoot, "package.json"), "utf8"));
   if (expected.build?.appId !== APP_ID)
     throw new Error("Unexpected application bundle identifier; existing credential identity must remain stable.");
-  const packaged = JSON.parse(archiveAPI.extractFile(archive, "package.json").toString("utf8"));
+  const packaged = JSON.parse(extract("package.json").toString("utf8"));
   if (packaged.version !== expected.version)
     throw new Error("Source, application and archive versions do not match.");
   if (packaged.main !== "electron/main.cjs" || packaged.name !== "tableline" ||
       packaged.license !== "GPL-3.0-only" || expected.license !== packaged.license)
     throw new Error("Unexpected archive application metadata.");
   for (const entry of ["electron/main.cjs", "electron/preload.cjs", "dist/index.html", "assets/icon.png", "LICENSE", "COPYRIGHT", "THIRD_PARTY_NOTICES.md", ...LANGUAGES.map((lang) => `locales/${lang}.json`)]) {
-    const contents = archiveAPI.extractFile(archive, entry);
+    const contents = extract(entry);
     if (!contents.length) throw new Error(`Missing required package entry: ${entry}`);
     if (entry.startsWith("locales/")) {
       const catalog = JSON.parse(contents.toString("utf8"));
@@ -54,7 +57,7 @@ function verifyArchiveContents(archive, { sourceRoot = root, archiveAPI = asar }
   }
   const files = sourceFiles(sourceRoot).map((entry) => {
     const sourceHash = hash(fs.readFileSync(path.join(sourceRoot, entry)));
-    const archiveHash = hash(archiveAPI.extractFile(archive, entry));
+    const archiveHash = hash(extract(entry));
     if (sourceHash !== archiveHash) throw new Error(`Archive source mismatch: ${entry}`);
     return { path: entry, sha256: sourceHash };
   });

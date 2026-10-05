@@ -520,5 +520,6 @@
   "Opzione di riparazione JSON non valida.": "Ungültige Option zur JSON-Korrektur.",
   "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "Die Abfrage ergibt eine Anzahl von 0. Prüfe den Filter, bevor du daraus schließt, dass die gesuchten Daten fehlen.",
   "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "Die Abfrage hat keine Zeilen zurückgegeben. Prüfe den Filter, bevor du daraus schließt, dass die gesuchten Daten fehlen.",
-  "This Databricks warehouse requires the SEA native kernel. Tableline supports Thrift SQL warehouses; choose a compatible warehouse.": "Dieses Databricks-Warehouse benötigt den nativen SEA-Kernel. Tableline unterstützt Thrift-SQL-Warehouses; wählen Sie ein kompatibles Warehouse."
+  "This Databricks warehouse requires the SEA native kernel. Tableline supports Thrift SQL warehouses; choose a compatible warehouse.": "Dieses Databricks-Warehouse benötigt den nativen SEA-Kernel. Tableline unterstützt Thrift-SQL-Warehouses; wählen Sie ein kompatibles Warehouse.",
+  "La cifratura credenziali di Linux non è sicura. Sblocca il portachiavi, riapri l’app e importa nuovamente le credenziali.": "Die Verschlüsselung der Zugangsdaten unter Linux ist nicht sicher. Entsperren Sie den Schlüsselbund, öffnen Sie die App erneut und importieren Sie die Zugangsdaten noch einmal."
 }

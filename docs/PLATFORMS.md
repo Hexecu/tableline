@@ -11,11 +11,11 @@ Tableline 0.2.2 targets six native desktop combinations. Compatibility is tied t
 | Windows | x64 | Windows Server 2025 |
 | Windows | arm64 | Windows 11 ARM |
 
-Electron 44.5.1 requires macOS 13 or later and supports 64-bit desktop targets. The runtime's [versioned platform requirements](https://github.com/electron/electron/blob/v44.5.1/README.md) are a minimum; the table identifies the systems actually exercised by CI. Linux packages use glibc and a graphical desktop. Alpine/musl, 32-bit systems, FreeBSD and old unsupported OS releases are outside this matrix. Windows Server CI does not establish every Windows desktop build or enterprise policy configuration.
+Electron 44.5.1 requires macOS 13 or later and supports 64-bit desktop targets. The runtime's [versioned platform requirements](https://github.com/electron/electron/blob/v44.5.1/README.md) are a minimum; the table identifies the systems actually exercised by CI. Linux checks use Ubuntu 24.04 with glibc and X11/Xvfb. GPU drivers and Wayland configurations are not certified. Alpine/musl, 32-bit systems, FreeBSD and old unsupported OS releases are outside this matrix. Windows Server CI does not establish every Windows desktop build or enterprise policy configuration.
 
 ## Required checks
 
-Each native lane asserts its own `process.platform` and `process.arch`, installs the locked dependencies, runs the source tests and builds an unpacked application on that target. The package verifier checks executable architecture, complete application/source matching, GPL metadata and the exact Electron/Chromium notices from that OS/CPU's checksum-verified upstream archive.
+Each target has source and packaged acceptance lanes. The native package lane asserts its own `process.platform` and `process.arch`, installs the locked dependencies and builds an unpacked application on that target. The package verifier checks executable architecture, complete application/source matching, GPL metadata and the exact Electron/Chromium notices from that OS/CPU's checksum-verified upstream archive.
 
 The packaged desktop suite opens that exact executable with temporary application data. It exercises the renderer/preload/IPC boundary, native Ctrl/Cmd hints, real SQLite utility processes, Unicode paths and parameters, write previews that preserve rows, exports, production database/provider module imports, a real native LZ4 compression roundtrip and Databricks SDK backend selection. Separate packaged suites exercise all five languages and AI configuration against a synthetic loopback provider. No production database or LLM account is used in CI.
 
@@ -24,6 +24,8 @@ Reports identify the target, source/package verification and individual checks. 
 ## Credential storage
 
 Linux and Windows acceptance uses synthetic credentials and temporary application data. Linux creates a disposable DBus/Secret Service session with GNOME Keyring; Windows uses its actual OS encryption APIs. Tests require encrypted roundtrips across application reload, rejection of corrupted ciphertext and no synthetic plaintext in application/keyring files. An unavailable secure backend is an explicit failure, never a plaintext fallback.
+
+A second Linux test starts a private D-Bus session with no activatable secret services. It reproduces Electron's configured-GNOME, async-available `v10` fixed-key fallback, then requires the vault to reject new saves and existing weak entries without returning credentials or changing existing ciphertext. Linux accepts only the pinned runtime's SecretService/KWallet `v11` and SecretPortal `v12` formats before persistence/decryption; macOS and Windows use different OS providers and retain their native formats. The source constants are reviewed against [Chromium 152](https://github.com/chromium/chromium/tree/152.0.7977.130/components/os_crypt/async/browser). Backend labels alone do not establish safe encryption.
 
 macOS native credential authorization is supervised separately because CI ad-hoc signing does not establish access for the installed Developer ID identity. Package fixtures forbid credential calls. The installed 0.2.1 signed-app LiteLLM acceptance is recorded in [AI_VALIDATION.md](AI_VALIDATION.md); it does not certify every Mac keychain configuration. A locked, absent or administratively restricted keyring can still prevent saving credentials on any supported target.
 

@@ -1,0 +1,30 @@
+# Copyright (c) 2026 Davide Leopardi
+# SPDX-License-Identifier: GPL-3.0-only
+
+# Keep source, license and package-verification bytes stable across native hosts.
+* text=auto eol=lf
+LICENSE text eol=lf
+COPYRIGHT text eol=lf
+*.svg text eol=lf
+
+# Never apply line-ending conversion to application assets, archives or fixtures.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.icns binary
+*.ico binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.dmg binary
+*.asar binary
+*.node binary
+*.so binary
+*.dll binary
+*.exe binary
+*.pdf binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary

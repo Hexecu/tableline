@@ -9,7 +9,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const crypto = require("node:crypto");
-const { verifyArchive, sourceFiles, verifyElectronNotices, electronFrameworkVersion } = require("../scripts/verify-package.cjs");
+const { verifyArchive, verifyArchiveContents, sourceFiles, verifyElectronNotices, electronFrameworkVersion } = require("../scripts/verify-package.cjs");
 const preserveElectronNotices = require("../scripts/preserve-electron-notices.cjs");
 const { Arch } = require("builder-util");
 
@@ -40,6 +40,7 @@ function fixture() {
   const archiveAPI = {
     getRawHeader: () => ({ headerString }),
     extractFile: (_archive, entry) => {
+      entry = entry.replaceAll("\\", "/");
       if (!(entry in entries)) throw new Error(`Missing package file: ${entry}`);
       return Buffer.from(entries[entry]);
     },
@@ -59,6 +60,25 @@ test("release verifier matches every runtime file, license, icon source and all 
     fs.writeFileSync(path.join(f.root, "dist/assets/app.js"), "updated after build");
     assert.throws(() => verifyArchive("fixture", f.plist, { sourceRoot: f.root, archiveAPI: f.archiveAPI }), /Archive source mismatch: dist\/assets\/app.js/);
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+});
+
+test("real ASAR inventory verifies nested runtime entries on the native filesystem", async () => {
+  const f = fixture();
+  const output = fs.mkdtempSync(path.join(os.tmpdir(), "tableline-nested-asar-"));
+  try {
+    fs.mkdirSync(path.join(f.root, "electron", "drivers"));
+    fs.writeFileSync(path.join(f.root, "electron", "drivers", "demo-fixture.cjs"), "Nested runtime fixture");
+    const archive = path.join(output, "app.asar");
+    await require("@electron/asar").createPackage(f.root, archive);
+    const checked = verifyArchiveContents(archive, { sourceRoot: f.root });
+    assert.equal(checked.sourceMatches, true);
+    assert.ok(checked.files.some(file => file.path === "electron/drivers/demo-fixture.cjs"));
+    fs.writeFileSync(path.join(f.root, "electron", "drivers", "demo-fixture.cjs"), "Changed nested fixture");
+    assert.throws(() => verifyArchiveContents(archive, { sourceRoot: f.root }), /Archive source mismatch: electron\/drivers\/demo-fixture.cjs/);
+  } finally {
+    fs.rmSync(f.root, { recursive: true, force: true });
+    fs.rmSync(output, { recursive: true, force: true });
+  }
 });
 
 for (const corruption of ["bundle-id", "source-version", "package-version", "header", "missing-language", "empty-language", "missing-license", "missing-copyright", "source-license", "package-license", "metadata"]) {
