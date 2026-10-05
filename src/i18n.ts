@@ -3,6 +3,8 @@
 
 import { normalizeLanguage, resolveLanguage, supportedLanguages, translateForLanguage } from '../locales/runtime.mjs';
 import type { Language } from '../locales/runtime.mjs';
+import { rendererPlatform, shortcutLabel } from '../locales/platform.mjs';
+export { shortcutLabel };
 export type { Language };
 export { supportedLanguages };
 export const LANGUAGE_STORAGE_KEY = 'tableline.language';
@@ -15,6 +17,7 @@ function initialLanguage(): Language {
   return resolveLanguage(saved, typeof navigator === 'undefined' ? [] : navigator.languages || [navigator.language]);
 }
 let language = initialLanguage();
+if (typeof document !== 'undefined') document.documentElement.dataset.platform = rendererPlatform();
 const listeners = new Set<() => void>();
 export function getLanguage(): Language { return language; }
 export function setLanguage(value: Language): void {
@@ -30,7 +33,7 @@ export function subscribeLanguage(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 export function translate(key: string, params?: Record<string, string | number>): string {
-  return translateForLanguage(language, key, params);
+  return translateForLanguage(language, key, params, shortcutLabel);
 }
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(language, options).format(value);

@@ -273,6 +273,35 @@ test("Databricks v2 transport binds parameters, bounds rows, and always closes o
   await assert.rejects(d.read("SELECT 1"), /fetch failed/);
   assert.equal(closed, 2);
 });
+test("Databricks reports SEA warehouse support limits without exposing native loader details", async (t) => {
+  const { DBSQLClient } = require("@databricks/sql");
+  let connection, closed = 0;
+  t.mock.method(DBSQLClient.prototype, "connect", async function(options) { connection = options; return this; });
+  t.mock.method(DBSQLClient.prototype, "openSession", async () => {
+    const error = new Error("kernel native binding failed to load with fixture-only-sensitive-path");
+    error.cause = { sqlState: "KP001" }; throw error;
+  });
+  t.mock.method(DBSQLClient.prototype, "close", async () => { closed++; });
+  const driver = new DatabricksDriver({ host: "qa.invalid", httpPath: "/fixture" }, { token: "fixture-token" });
+  await assert.rejects(driver.connect(), error => {
+    assert.equal(error.code, "DATABRICKS_UNSUPPORTED_WAREHOUSE");
+    assert.match(error.message, /Thrift SQL warehouses/);
+    assert.doesNotMatch(error.message, /sensitive|fixture-token/);
+    return true;
+  });
+  assert.equal(connection.useKernel, undefined);
+  assert.equal(connection.checkServerCertificate, true);
+  assert.equal(connection.telemetryEnabled, false);
+  assert.equal(closed, 1);
+});
+test("Databricks keeps TLS and unrelated session failures unchanged", async (t) => {
+  const { DBSQLClient } = require("@databricks/sql");
+  const failure = new Error("TLS certificate rejected");
+  t.mock.method(DBSQLClient.prototype, "connect", async function() { return this; });
+  t.mock.method(DBSQLClient.prototype, "openSession", async () => { throw failure; });
+  t.mock.method(DBSQLClient.prototype, "close", async () => {});
+  await assert.rejects(new DatabricksDriver({}, {}).connect(), error => error === failure);
+});
 test("ClickHouse sends server-enforced readonly settings and typed parameters", async () => {
   const d = new ClickHouseDriver({}, {});
   let call;

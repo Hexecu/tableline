@@ -40,14 +40,14 @@ const templates = Object.keys(it).filter(key => /\{[a-zA-Z]/.test(key)).map(key 
   pattern += key.slice(previous).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$';
   return { key, names, pattern: new RegExp(pattern, 's') };
 }).sort((left, right) => right.key.replace(placeholders, '').length - left.key.replace(placeholders, '').length);
-export function translateForLanguage(language, key, params = {}) {
+export function translateForLanguage(language, key, params = {}, formatMessage = value => value) {
   const catalog = catalogs[normalizeLanguage(language)];
   const message = (messageKey, values) => {
     const count = Number(values.count);
     const variant = Object.hasOwn(values, 'count') && Number.isFinite(count) &&
       new Intl.PluralRules(normalizeLanguage(language)).select(count) === 'one' &&
       Object.hasOwn(catalog, messageKey + '.one') ? messageKey + '.one' : messageKey;
-    return interpolate(catalog[variant] ?? en[variant], values);
+    return interpolate(formatMessage(catalog[variant] ?? en[variant]), values);
   };
   if (Object.hasOwn(en, key)) return message(key, params);
   for (const template of templates) {

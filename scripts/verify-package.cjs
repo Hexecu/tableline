@@ -33,18 +33,12 @@ function sourceFiles(sourceRoot) {
   return entries;
 }
 
-function verifyArchive(archive, plist, { sourceRoot = root, archiveAPI = asar } = {}) {
+function verifyArchiveContents(archive, { sourceRoot = root, archiveAPI = asar } = {}) {
   const expected = JSON.parse(fs.readFileSync(path.join(sourceRoot, "package.json"), "utf8"));
-  if (expected.build?.appId !== APP_ID || plist.CFBundleIdentifier !== APP_ID)
+  if (expected.build?.appId !== APP_ID)
     throw new Error("Unexpected application bundle identifier; existing credential identity must remain stable.");
-  if (plist.CFBundleName !== "Tableline" || plist.CFBundleExecutable !== "Tableline")
-    throw new Error("Unexpected application name or executable.");
-  const { headerString } = archiveAPI.getRawHeader(archive);
-  const integrity = plist.ElectronAsarIntegrity?.["Resources/app.asar"];
-  if (integrity?.algorithm !== "SHA256" || integrity.hash !== hash(headerString))
-    throw new Error("The sealed ASAR header integrity does not match Info.plist.");
   const packaged = JSON.parse(archiveAPI.extractFile(archive, "package.json").toString("utf8"));
-  if (packaged.version !== expected.version || packaged.version !== plist.CFBundleShortVersionString)
+  if (packaged.version !== expected.version)
     throw new Error("Source, application and archive versions do not match.");
   if (packaged.main !== "electron/main.cjs" || packaged.name !== "tableline" ||
       packaged.license !== "GPL-3.0-only" || expected.license !== packaged.license)
@@ -67,11 +61,38 @@ function verifyArchive(archive, plist, { sourceRoot = root, archiveAPI = asar } 
   return { version: packaged.version, license: packaged.license, sourceMatches: true, files, languageCatalogs: LANGUAGES };
 }
 
-function electronLicensesDirectory(bundle, { create = false } = {}) {
-  for (const relative of ["", "Contents", "Contents/Resources"])
+function verifyArchive(archive, plist, options = {}) {
+  if (plist.CFBundleIdentifier !== APP_ID)
+    throw new Error("Unexpected application bundle identifier; existing credential identity must remain stable.");
+  if (plist.CFBundleName !== "Tableline" || plist.CFBundleExecutable !== "Tableline")
+    throw new Error("Unexpected application name or executable.");
+  const { headerString } = (options.archiveAPI || asar).getRawHeader(archive);
+  const integrity = plist.ElectronAsarIntegrity?.["Resources/app.asar"];
+  if (integrity?.algorithm !== "SHA256" || integrity.hash !== hash(headerString))
+    throw new Error("The sealed ASAR header integrity does not match Info.plist.");
+  const checked = verifyArchiveContents(archive, options);
+  if (checked.version !== plist.CFBundleShortVersionString)
+    throw new Error("Source, application and archive versions do not match.");
+  return checked;
+}
+
+function noticeSnapshot(sourceRoot, platform, arch, electronVersion) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(sourceRoot, "assets", "electron-notices.json"), "utf8"));
+  const expected = JSON.parse(fs.readFileSync(path.join(sourceRoot, "package.json"), "utf8")).devDependencies?.electron;
+  const snapshot = manifest.version === 2 ? manifest.distributions?.[`${platform}-${arch}`]
+    : manifest.version === 1 && manifest.platform === platform && manifest.arch === arch ? manifest : null;
+  if (!snapshot || manifest.electronVersion !== expected || electronVersion !== expected ||
+      !/^[a-f\d]{64}$/.test(snapshot.upstreamArchiveSha256))
+    throw new Error("Packaged Electron version/architecture does not match the reviewed notice snapshot.");
+  return snapshot;
+}
+
+function electronLicensesDirectory(bundle, { create = false, platform = "darwin" } = {}) {
+  const ancestors = platform === "darwin" ? ["", "Contents", "Contents/Resources"] : ["", "resources"];
+  for (const relative of ancestors)
     if (!fs.lstatSync(path.join(bundle, relative)).isDirectory())
       throw new Error("Electron notice bundle ancestors must be real directories, not symlinks.");
-  const licenses = path.join(bundle, "Contents", "Resources", "licenses");
+  const licenses = path.join(bundle, ...ancestors.at(-1).split("/"), "licenses");
   if (create && !fs.existsSync(licenses)) fs.mkdirSync(licenses);
   if (!fs.lstatSync(licenses).isDirectory())
     throw new Error("Packaged Electron notices must be a directory inside the application.");
@@ -80,23 +101,65 @@ function electronLicensesDirectory(bundle, { create = false } = {}) {
   return licenses;
 }
 
-function verifyElectronNotices(bundle, { sourceRoot = root, arch = process.arch, electronVersion } = {}) {
-  const manifest = JSON.parse(fs.readFileSync(path.join(sourceRoot, "assets", "electron-notices.json"), "utf8"));
-  const expected = JSON.parse(fs.readFileSync(path.join(sourceRoot, "package.json"), "utf8")).devDependencies?.electron;
-  if (manifest.version !== 1 || manifest.platform !== "darwin" || manifest.arch !== arch ||
-      manifest.electronVersion !== expected || electronVersion !== expected ||
-      !/^[a-f\d]{64}$/.test(manifest.upstreamArchiveSha256))
-    throw new Error("Packaged Electron version/architecture does not match the reviewed notice snapshot.");
-  const licensesDir = electronLicensesDirectory(bundle);
+function verifyElectronNotices(bundle, { sourceRoot = root, arch = process.arch, platform = "darwin", electronVersion } = {}) {
+  const snapshot = noticeSnapshot(sourceRoot, platform, arch, electronVersion);
+  const licensesDir = electronLicensesDirectory(bundle, { platform });
   const licenses = ["LICENSE.electron.txt", "LICENSES.chromium.html"].map((filename) => {
     const fullPath = path.join(licensesDir, filename);
     if (!fs.lstatSync(fullPath).isFile()) throw new Error(`Missing regular packaged Electron notice: ${filename}`);
-    const content = fs.readFileSync(fullPath), snapshot = manifest.licenses?.[filename];
-    if (!snapshot || !content.length || content.length !== snapshot.bytes || hash(content) !== snapshot.sha256)
+    const content = fs.readFileSync(fullPath), expected = snapshot.licenses?.[filename];
+    if (!expected || !content.length || content.length !== expected.bytes || hash(content) !== expected.sha256)
       throw new Error(`Packaged Electron notice does not match reviewed upstream bytes: ${filename}`);
-    return { path: `Contents/Resources/licenses/${filename}`, bytes: content.length, sha256: snapshot.sha256 };
+    return { path: `${platform === "darwin" ? "Contents/Resources" : "resources"}/licenses/${filename}`, bytes: content.length, sha256: expected.sha256 };
   });
-  return { electronVersion, upstreamArchiveSha256: manifest.upstreamArchiveSha256, licenses };
+  return { electronVersion, upstreamArchiveSha256: snapshot.upstreamArchiveSha256, licenses };
+}
+
+function executableArchitecture(bytes, platform) {
+  if (!Buffer.isBuffer(bytes)) throw new Error("Expected executable bytes.");
+  let machine;
+  if (platform === "linux") {
+    if (bytes.length < 20 || !bytes.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) || bytes[4] !== 2 || bytes[5] !== 1)
+      throw new Error("Expected a 64-bit little-endian ELF executable.");
+    machine = bytes.readUInt16LE(18);
+    if (machine === 62) return "x64";
+    if (machine === 183) return "arm64";
+  } else if (platform === "win32") {
+    if (bytes.length < 64 || bytes.toString("ascii", 0, 2) !== "MZ") throw new Error("Expected a Windows PE executable.");
+    const offset = bytes.readUInt32LE(0x3c);
+    if (offset > bytes.length - 6 || bytes.readUInt32LE(offset) !== 0x4550) throw new Error("Invalid Windows PE header.");
+    machine = bytes.readUInt16LE(offset + 4);
+    if (machine === 0x8664) return "x64";
+    if (machine === 0xaa64) return "arm64";
+  }
+  throw new Error("Unsupported executable platform or architecture.");
+}
+
+function verifyDatabricksInventory(archive, { archiveAPI = asar } = {}) {
+  const files = archiveAPI.listPackage(archive).map(entry => entry.replaceAll("\\", "/"));
+  if (files.some(entry => /\/node_modules\/@databricks\/databricks-sql-kernel-[^/]+(?:\/|$)/.test(entry) ||
+      /\/node_modules\/@databricks\/sql\/native\/kernel\/[^/]+\.node$/.test(entry)))
+    throw new Error("The unused native Databricks kernel must not be distributed.");
+  if (!files.some(entry => entry.endsWith("/node_modules/@databricks/sql/dist/thrift-backend/ThriftBackend.js")))
+    throw new Error("The supported Databricks Thrift backend is missing.");
+  return { databricksBackend: "thrift", databricksKernelBundled: false };
+}
+
+function verifyDesktopPackage(directory, { sourceRoot = root, platform = process.platform, arch = process.arch } = {}) {
+  if (platform === "darwin") return verifyPackage(directory, { sourceRoot, platform, arch });
+  if (!["linux", "win32"].includes(platform) || !["x64", "arm64"].includes(arch)) throw new Error("Unsupported desktop package target.");
+  const app = path.resolve(directory);
+  const executable = path.join(app, platform === "win32" ? "Tableline.exe" : "tableline");
+  if (!fs.lstatSync(app).isDirectory() || !fs.lstatSync(executable).isFile()) throw new Error("Expected a completed desktop package.");
+  if (executableArchitecture(fs.readFileSync(executable), platform) !== arch) throw new Error("Package executable architecture mismatch.");
+  const archive = path.join(app, "resources", "app.asar");
+  if (!fs.lstatSync(archive).isFile()) throw new Error("Missing regular application archive.");
+  const electronVersion = JSON.parse(fs.readFileSync(path.join(sourceRoot, "package.json"), "utf8")).devDependencies.electron;
+  return { app, executable, platform, arch,
+    ...verifyArchiveContents(archive, { sourceRoot }),
+    ...verifyDatabricksInventory(archive),
+    ...verifyElectronNotices(app, { sourceRoot, platform, arch, electronVersion }),
+    archiveSha256: hash(fs.readFileSync(archive)), signatureIntegrity: false, asarIntegrity: false, notarizationVerified: false };
 }
 
 function electronFrameworkVersion(plist) {
@@ -133,6 +196,7 @@ function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, plat
   const checked = verifyArchive(archive, plist, { sourceRoot });
   return {
     app, arch, ...checked, ...notices,
+    ...verifyDatabricksInventory(archive),
     archiveSha256: hash(fs.readFileSync(archive)),
     signatureIntegrity: true, asarIntegrity: true,
     notarizationVerified: false,
@@ -141,14 +205,16 @@ function verifyPackage(bundlePath, { sourceRoot = root, run = execFileSync, plat
 
 if (require.main === module) {
   try {
-    if (process.argv.length !== 3) throw new Error("Usage: node scripts/verify-package.cjs /path/to/Tableline.app");
-    const result = verifyPackage(process.argv[2]);
+    if (process.argv.length !== 3) throw new Error("Usage: node scripts/verify-package.cjs /path/to/native/Tableline-package");
+    const result = verifyDesktopPackage(process.argv[2]);
     console.log(JSON.stringify(result, null, 2));
-    console.log("Signature/resource integrity is verified. Developer ID trust and notarization are separate release gates.");
+    console.log(process.platform === "darwin"
+      ? "Signature/resource integrity is verified. Developer ID trust and notarization are separate release gates."
+      : "Source contents, executable architecture and upstream notices are verified. OS signing and installation trust are separate release gates.");
   } catch (error) {
     console.error("Package verification failed:", error.message);
     process.exitCode = 1;
   }
 }
 
-module.exports = { verifyPackage, verifyArchive, sourceFiles, verifyElectronNotices, electronLicensesDirectory, electronFrameworkVersion };
+module.exports = { verifyPackage, verifyDesktopPackage, verifyArchive, verifyArchiveContents, sourceFiles, verifyElectronNotices, electronLicensesDirectory, electronFrameworkVersion, noticeSnapshot, executableArchitecture, verifyDatabricksInventory };

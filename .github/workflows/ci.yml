@@ -20,12 +20,19 @@ jobs:
   source:
     name: Source / ${{ matrix.os }} / Node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15]
-        node: [22, 24]
+        include:
+          - { os: ubuntu-24.04, node: 22 }
+          - { os: macos-15, node: 22 }
+          - { os: ubuntu-24.04, node: 24 }
+          - { os: ubuntu-24.04-arm, node: 24 }
+          - { os: macos-15, node: 24 }
+          - { os: macos-15-intel, node: 24 }
+          - { os: windows-2025, node: 24 }
+          - { os: windows-11-arm, node: 24 }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,16 +47,25 @@ jobs:
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=moderate
 
-  locale-desktop:
-    name: Locale desktop / ${{ matrix.os }}
+  native-package:
+    name: Packaged desktop / ${{ matrix.platform }} / ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15]
+        include:
+          - { os: ubuntu-24.04, platform: linux, arch: x64, bundle: linux-unpacked, executable: linux-unpacked/tableline }
+          - { os: ubuntu-24.04-arm, platform: linux, arch: arm64, bundle: linux-arm64-unpacked, executable: linux-arm64-unpacked/tableline }
+          - { os: macos-15, platform: darwin, arch: arm64, bundle: mac-arm64/Tableline.app, executable: mac-arm64/Tableline.app/Contents/MacOS/Tableline }
+          - { os: macos-15-intel, platform: darwin, arch: x64, bundle: mac/Tableline.app, executable: mac/Tableline.app/Contents/MacOS/Tableline }
+          - { os: windows-2025, platform: win32, arch: x64, bundle: win-unpacked, executable: win-unpacked/Tableline.exe }
+          - { os: windows-11-arm, platform: win32, arch: arm64, bundle: win-arm64-unpacked, executable: win-arm64-unpacked/Tableline.exe }
     env:
       TABLELINE_E2E_CREDENTIALS: "0"
+      TABLELINE_RELEASE_DIR: ${{ runner.temp }}/tableline-native-package
+      TABLELINE_PLATFORM_BUNDLE: ${{ runner.temp }}/tableline-native-package/${{ matrix.bundle }}
+      TABLELINE_E2E_EXECUTABLE: ${{ runner.temp }}/tableline-native-package/${{ matrix.executable }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,28 +74,59 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
-      - run: npm ci
-      - run: npm run build
-      - name: Locale smoke on Linux
+      - name: Install isolated Linux desktop and keyring prerequisites
         if: runner.os == 'Linux'
-        run: xvfb-run -a node scripts/e2e-locales.cjs
-      - name: Locale smoke on macOS
-        if: runner.os == 'macOS'
-        run: node scripts/e2e-locales.cjs
-      - name: AI configuration regression on Linux
+        run: sudo apt-get update && sudo apt-get install -y xvfb dbus-x11 gnome-keyring libsecret-1-0
+      - run: npm ci
+      - name: Assert the runner is native to the requested OS and CPU
+        run: node -e "if(process.platform!=='${{ matrix.platform }}'||process.arch!=='${{ matrix.arch }}')throw Error('Runner target mismatch')"
+      - name: Build and verify local package without signing credentials or publishing
+        run: npm run package
+      - name: Prepare the verified Linux sandbox helper in the disposable package
+        if: runner.os == 'Linux'
+        run: |
+          test -f "$TABLELINE_PLATFORM_BUNDLE/chrome-sandbox"
+          test ! -L "$TABLELINE_PLATFORM_BUNDLE/chrome-sandbox"
+          sudo chown root:root "$TABLELINE_PLATFORM_BUNDLE/chrome-sandbox"
+          sudo chmod 4755 "$TABLELINE_PLATFORM_BUNDLE/chrome-sandbox"
+      - name: Run packaged platform acceptance on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:platform
+      - name: Run packaged platform acceptance on macOS and Windows
+        if: runner.os != 'Linux'
+        run: npm run test:platform
+      - name: Run all five languages in the Linux package
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:e2e:locales
+      - name: Run all five languages in the macOS and Windows package
+        if: runner.os != 'Linux'
+        run: npm run test:e2e:locales
+      - name: Verify packaged AI configuration on Linux
         if: runner.os == 'Linux'
         run: xvfb-run -a npm run test:e2e:ai
-      - name: AI configuration regression on macOS
-        if: runner.os == 'macOS'
+      - name: Verify packaged AI configuration on macOS and Windows
+        if: runner.os != 'Linux'
         run: npm run test:e2e:ai
-      - name: Upload isolated locale reports
+      - name: Verify real encrypted credential persistence in a disposable Linux keyring
+        if: runner.os == 'Linux'
+        run: xvfb-run -a node scripts/e2e-storage.cjs
+      - name: Verify real encrypted credential persistence with Windows DPAPI
+        if: runner.os == 'Windows'
+        run: node scripts/e2e-storage.cjs
+      - name: Upload reports only; compiled applications are never uploaded
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: locales-${{ matrix.os }}
-          path: artifacts/e2e/locales/
+          name: platform-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            artifacts/platforms/*.json
+            artifacts/e2e/locales/
+            artifacts/e2e/storage/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Remove the temporary application package
+        if: always()
+        run: node -e "require('node:fs').rmSync(process.env.TABLELINE_RELEASE_DIR,{recursive:true,force:true})"
 
   secret-scan:
     name: Public source secret scan

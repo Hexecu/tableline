@@ -9,7 +9,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const { spawnSync } = require("node:child_process");
-const { verifyPackage } = require("./verify-package.cjs");
+const { verifyPackage, verifyDesktopPackage } = require("./verify-package.cjs");
 
 const root = path.resolve(__dirname, "..");
 const version = require(path.join(root, "package.json")).version;
@@ -44,7 +44,8 @@ function packageApp({
     throw new Error("Supported package architectures are arm64 and x64.");
   const base = platform === "darwin"
     ? path.join(os.homedir(), "Library", "Caches", "Tableline")
-    : path.join(os.homedir(), ".cache", "Tableline");
+    : platform === "win32" ? path.join(env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Tableline")
+    : path.join(env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "Tableline");
   const output = path.resolve(outputDir || env.TABLELINE_RELEASE_DIR || path.join(base, "build", `v${version}`));
   fs.mkdirSync(output, { recursive: true });
   const builderEnv = { ...env, CSC_IDENTITY_AUTO_DISCOVERY: "false" };
@@ -54,10 +55,15 @@ function packageApp({
       delete builderEnv[key];
   delete builderEnv.DEBUG;
   delete builderEnv.ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES;
-  if (buildRenderer)
-    run(platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], {
+  if (buildRenderer) {
+    // Invoke JavaScript CLIs directly: .cmd scripts require a shell on Windows.
+    run(process.execPath, [require.resolve("typescript/bin/tsc"), "--noEmit"], {
       cwd: root, env: builderEnv, stdio: "inherit",
     });
+    run(process.execPath, [path.join(path.dirname(require.resolve("vite/package.json")), "bin", "vite.js"), "build"], {
+      cwd: root, env: builderEnv, stdio: "inherit",
+    });
+  }
   const args = [
     require.resolve("electron-builder/out/cli/cli.js"),
     platform === "darwin" ? "--mac" : platform === "win32" ? "--win" : "--linux",
@@ -67,15 +73,23 @@ function packageApp({
   if (platform === "darwin") {
     const selected = String(identity || env.TABLELINE_SIGN_IDENTITY || "-").replace(/^Developer ID Application:\s*/, "");
     args.push(`--config.mac.identity=${selected}`, "--config.mac.notarize=false");
-    if (selected !== "-") args.push(
+    if (selected === "-") {
+      // Ad-hoc binaries have no Team ID; hardened library validation prevents
+      // even Electron's framework from loading. Local CI packages never become
+      // public release artifacts. Developer ID releases retain hardened runtime.
+      args.push("--config.mac.hardenedRuntime=false");
+    } else args.push(
       "--config.forceCodeSigning=true", "--config.mac.type=distribution",
       "--config.mac.hardenedRuntime=true",
     );
   }
   run(process.execPath, args, { cwd: root, env: builderEnv, stdio: "inherit" });
   if (platform !== "darwin") {
-    log(`Tableline local ${platform}/${arch} package: ${output}`);
-    return { output, platform, arch, publicRelease: false };
+    const folder = `${platform === "win32" ? "win" : "linux"}${arch === "arm64" ? "-arm64" : ""}-unpacked`;
+    const bundle = path.join(output, folder);
+    const verification = verifyDesktopPackage(bundle, { platform, arch });
+    log(`Verified Tableline local ${platform}/${arch} package: ${bundle}`);
+    return { bundle, output, platform, arch, verification, publicRelease: false };
   }
   const bundle = path.join(output, arch === "x64" ? "mac" : `mac-${arch}`, "Tableline.app");
   const verification = verifyPackage(bundle, { arch });

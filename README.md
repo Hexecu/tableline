@@ -9,7 +9,7 @@ A local desktop workspace for databases and grounded AI. Browse tables, run quer
 
 ## Try it
 
-Download the application and checksum from [GitHub Releases](https://github.com/Hexecu/tableline/releases/tag/v0.2.0). Release notes identify the supported architecture and signing status. The desktop distribution targets **macOS on Apple Silicon**. Linux and Windows installers are not currently released; CI checks source behavior on macOS and Linux.
+Download the historical application and checksum from [GitHub Releases](https://github.com/Hexecu/tableline/releases/tag/v0.2.0). That MIT release targets macOS on Apple Silicon. Current GPL source targets **macOS Intel/Apple Silicon, Linux x64/arm64 and Windows x64/arm64**, with native package/runtime checks in [the platform matrix](docs/PLATFORMS.md). New cross-platform installers have not been published.
 
 Open **Local demo** to use a real SQLite database with 120 customers, 36 products, 1,000 orders and 1,000 order items. Its assistant is explicitly labeled as a deterministic demo and needs no LLM account. Switch the interface between **English, Italian, French, German and Spanish** in the language selector; the choice persists across restarts. Database names, SQL, model output and server diagnostics retain their original content.
 
@@ -42,7 +42,7 @@ Configure **OpenAI, Anthropic, Azure OpenAI, Google AI Studio, Vertex AI, Amazon
 
 An explicit question can send bounded schema, question history and up to four bounded query results to that provider. Answers expose successful query evidence; schema-only replies are marked separately. **Prepare change** requires an explicit mutation request and returns a proposal; the assistant has no commit tool. Human confirmation uses the same database write-review flow. Model answers still need review. See [the assistant contract](docs/AI.md) and [data handling](docs/PRIVACY.md).
 
-Secrets are stored separately from profile metadata and encrypted through Electron safeStorage. Unavailable secure storage, including Linux's `basic_text` backend, is rejected without a plaintext fallback. Native credential requests are serialized; a timeout blocks further requests until restart. Native credential acceptance is separate from fixture testing and is not certified by CI.
+Secrets are stored separately from profile metadata and encrypted through Electron safeStorage. Unavailable secure storage, including Linux's `basic_text` backend, is rejected without a plaintext fallback. Native credential requests are serialized; a timeout blocks further requests until restart. Separate Linux/Windows CI acceptance exercises real OS encryption with disposable synthetic credentials. macOS authorization remains a supervised installed-app check; see [the storage boundary](docs/PLATFORMS.md#credential-storage).
 
 ## Develop
 

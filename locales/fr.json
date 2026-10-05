@@ -519,5 +519,6 @@
   "Il modello ha raggiunto il limite di generazione prima di completare la decisione JSON. Nessuna ulteriore query eseguita: riprova con una richiesta più breve.": "Le modèle a atteint sa limite de génération avant de terminer la décision JSON. Aucune requête supplémentaire exécutée : essayez une demande plus courte.",
   "Opzione di riparazione JSON non valida.": "Option de correction JSON non valide.",
   "Il conteggio della query è 0. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "Le comptage de la requête est de 0. Vérifiez le critère avant de conclure que les données demandées sont absentes.",
-  "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "La requête n’a renvoyé aucune ligne. Vérifiez le critère avant de conclure que les données demandées sont absentes."
+  "La query non ha restituito righe. Verifica il criterio prima di concludere che i dati richiesti siano assenti.": "La requête n’a renvoyé aucune ligne. Vérifiez le critère avant de conclure que les données demandées sont absentes.",
+  "This Databricks warehouse requires the SEA native kernel. Tableline supports Thrift SQL warehouses; choose a compatible warehouse.": "Cet entrepôt Databricks nécessite le noyau natif SEA. Tableline prend en charge les entrepôts SQL Thrift ; choisissez un entrepôt compatible."
 }

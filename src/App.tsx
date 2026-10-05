@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Davide Leopardi
 // SPDX-License-Identifier: GPL-3.0-only
 
-import { translate, formatNumber, formatDate, getLanguage, languageNames, supportedLanguages } from "./i18n";
+import { translate, shortcutLabel, formatNumber, formatDate, getLanguage, languageNames, supportedLanguages } from "./i18n";
 import { useI18n } from "./LocaleProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -697,7 +697,7 @@ export default function App() {
   const total = result?.total;
   const selectedRow = selected?.row;
   const paletteActions = [
-    { label: translate("Nuova query"), hint: "⌘ T", action: () => openSQL() },
+    { label: translate("Nuova query"), hint: shortcutLabel("⌘ T"), action: () => openSQL() },
     {
       label: translate("Nuova connessione"),
       hint: "",
@@ -710,7 +710,7 @@ export default function App() {
     { label: translate("Provider AI"), hint: "", action: () => setModal("providers") },
     {
       label: assistant ? translate("Nascondi assistente") : translate("Apri assistente"),
-      hint: "⌘ I",
+      hint: shortcutLabel("⌘ I"),
       action: () => setAssistant((a) => !a),
     },
     {
@@ -718,7 +718,7 @@ export default function App() {
       hint: "",
       action: () => setTheme((t) => (t === "light" ? "dark" : "light")),
     },
-    { label: translate("Aggiorna dati"), hint: "⌘ ↵", action: () => load() },
+    { label: translate("Aggiorna dati"), hint: shortcutLabel("⌘ ↵"), action: () => load() },
     { label: translate("Esporta CSV"), hint: "", action: () => exportData("csv") },
     ...schema.map((t) => ({
       label: t.name,
@@ -757,7 +757,7 @@ export default function App() {
             setPaletteSearch("");
           }}
         >
-          <Search size={13} />  {translate("Cerca o esegui un comando")} <kbd>⌘ K</kbd>
+          <Search size={13} />  {translate("Cerca o esegui un comando")} <kbd>{shortcutLabel("⌘ K")}</kbd>
         </button>
       </div>
       <div className="app-body" inert={!!modal || !!proposal}>
@@ -1101,7 +1101,7 @@ export default function App() {
                   </button>
                 </div>
                 <button className="text-button" onClick={() => openSQL()}>
-                  <Plus size={14} />  {translate("Nuova query")} <kbd>⌘ T</kbd>
+                  <Plus size={14} />  {translate("Nuova query")} <kbd>{shortcutLabel("⌘ T")}</kbd>
                 </button>
               </div>
               {view === "sql" ? (
@@ -1202,7 +1202,7 @@ export default function App() {
                           {/^(UPDATE|INSERT|DELETE)/i.test(tab.sql.trim())
                             ? translate("Prepara modifica")
                             : translate("Esegui")}{" "}
-                          <kbd>⌘ ↵</kbd>
+                          <kbd>{shortcutLabel("⌘ ↵")}</kbd>
                         </button>
                       </div>
                     </div>
@@ -1492,7 +1492,7 @@ export default function App() {
               ? translate("Modifica da approvare")
               : translate("Workspace locale")}
           <span className="statusbar-separator" />
-          <span>⌘ K</span>
+          <span>{shortcutLabel("⌘ K")}</span>
         </div>
       </footer>
       {notification && (
@@ -1718,12 +1718,12 @@ export default function App() {
         >
           <div className="help-shortcuts">
             {[
-              ["⌘ K", translate("Cerca comandi e tabelle")],
-              ["⌘ T", translate("Apri una query")],
-              ["⌘ Invio", translate("Esegui query o aggiorna dati")],
+              [shortcutLabel("⌘ K"), translate("Cerca comandi e tabelle")],
+              [shortcutLabel("⌘ T"), translate("Apri una query")],
+              [shortcutLabel("⌘ Invio"), translate("Esegui query o aggiorna dati")],
               ["Ctrl Space", translate("Completa SQL, tabelle e colonne")],
-              ["⌘ S", translate("Salva la query")],
-              ["⌘ I", translate("Apri o chiudi l’assistente")],
+              [shortcutLabel("⌘ S"), translate("Salva la query")],
+              [shortcutLabel("⌘ I"), translate("Apri o chiudi l’assistente")],
               [translate("Doppio clic"), translate("Modifica una cella con chiave primaria")],
               ["F2", translate("Modifica la cella selezionata")],
             ].map(([key, text]) => (

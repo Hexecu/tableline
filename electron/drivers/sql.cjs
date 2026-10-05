@@ -501,10 +501,24 @@ class DatabricksDriver {
       telemetryEnabled: false,
       checkServerCertificate: true,
     });
-    this.session = await this.client.openSession({
-      initialCatalog: this.profile.catalog,
-      initialSchema: this.profile.schema,
-    });
+    try {
+      this.session = await this.client.openSession({
+        initialCatalog: this.profile.catalog,
+        initialSchema: this.profile.schema,
+      });
+    } catch (error) {
+      await this.client.close().catch(() => {});
+      // Some SEA/Reyden warehouses reject Thrift (KP001) and the SDK then
+      // requests its experimental native kernel. That unused kernel is excluded
+      // from this app's distribution; report the actual support boundary.
+      if (error?.sqlState === "KP001" || error?.cause?.sqlState === "KP001" ||
+          /^kernel native binding\b/.test(String(error?.message || ""))) {
+        const unsupported = new Error("This Databricks warehouse requires the SEA native kernel. Tableline supports Thrift SQL warehouses; choose a compatible warehouse.");
+        unsupported.code = "DATABRICKS_UNSUPPORTED_WAREHOUSE";
+        throw unsupported;
+      }
+      throw error;
+    }
   }
   async read(sql, params = [], limit = 500) {
     const operation = await this.session.executeStatement(

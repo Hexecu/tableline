@@ -148,6 +148,10 @@ button svg {
   width: 83px;
   flex-shrink: 0;
 }
+html[data-platform="win32"] .window-space,
+html[data-platform="linux"] .window-space {
+  width: 17px;
+}
 .wordmark {
   font-size: 16px;
   font-weight: 650;

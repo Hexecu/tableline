@@ -16,16 +16,18 @@ const { verifyElectronNotices } = require("./verify-package.cjs");
 // Only clean generated bundle metadata, before signing; retain quarantine and
 // every other extended attribute. Never alter an installed or downloaded app.
 module.exports = async (context) => {
-  if (context.electronPlatformName !== "darwin") return;
-  const bundle = path.join(
+  const platform = context.electronPlatformName;
+  const bundle = platform === "darwin" ? path.join(
     context.appOutDir,
     `${context.packager.appInfo.productFilename}.app`,
-  );
+  ) : context.appOutDir;
   verifyElectronNotices(bundle, {
     sourceRoot: context.packager.projectDir,
     arch: typeof context.arch === "string" ? context.arch : Arch[context.arch],
     electronVersion: context.packager.info.framework.version,
+    platform,
   });
+  if (platform !== "darwin") return;
   for (const attribute of ["com.apple.FinderInfo", "com.apple.ResourceFork"])
     execFileSync("/usr/bin/xattr", ["-dr", attribute, bundle], {
       stdio: ["ignore", "pipe", "pipe"],

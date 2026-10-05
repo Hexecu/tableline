@@ -1,6 +1,6 @@
 {
   "name": "tableline",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "A fast local database workspace with grounded AI",
   "main": "electron/main.cjs",
@@ -8,7 +8,7 @@
     "dev": "node scripts/dev.cjs",
     "build": "tsc --noEmit && vite build",
     "start": "electron .",
-    "test": "node --test tests/*.test.cjs",
+    "test": "node scripts/test.cjs",
     "test:e2e": "node scripts/e2e.cjs",
     "package": "node scripts/package.cjs",
     "release:macos": "node scripts/release-macos.cjs",
@@ -16,7 +16,8 @@
     "verify:package": "node scripts/verify-package.cjs",
     "test:i18n": "node --test tests/i18n.test.cjs",
     "test:e2e:locales": "node scripts/e2e-locales.cjs",
-    "test:e2e:ai": "node scripts/e2e-ai-selection.cjs"
+    "test:e2e:ai": "node scripts/e2e-ai-selection.cjs",
+    "test:platform": "node scripts/platform-smoke.cjs"
   },
   "dependencies": {
     "react": "19.3.0",
@@ -56,7 +57,9 @@
       "LICENSE",
       "COPYRIGHT",
       "THIRD_PARTY_NOTICES.md",
-      "locales/**/*"
+      "locales/**/*",
+      "!node_modules/@databricks/databricks-sql-kernel-*/**/*",
+      "!node_modules/@databricks/sql/native/kernel/*.node"
     ],
     "directories": {
       "output": "release"
