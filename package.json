@@ -9,6 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "electron .",
     "test": "node scripts/test.cjs",
+    "audit": "npm audit --audit-level=moderate",
     "test:e2e": "node scripts/e2e.cjs",
     "package": "node scripts/package.cjs",
     "release:macos": "node scripts/release-macos.cjs",
@@ -41,6 +42,7 @@
     "@types/node": "^24.0.0",
     "electron": "44.5.1",
     "electron-builder": "^26.0.12",
+    "undici": "7.30.0",
     "typescript": "^5.9.3",
     "vite": "8.3.2",
     "playwright": "^1.56.0"
@@ -93,6 +95,9 @@
   },
   "license": "GPL-3.0-only",
   "overrides": {
+    "app-builder-lib@26.15.3": {
+      "@electron/get": "5.1.0"
+    },
     "basic-ftp": "^6.2.1",
     "uuid": "^11.1.1"
   },

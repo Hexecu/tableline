@@ -17,6 +17,8 @@ Electron 44.5.1 requires macOS 13 or later and supports 64-bit desktop targets. 
 
 Each target has source and packaged acceptance lanes. The native package lane asserts its own `process.platform` and `process.arch`, installs the locked dependencies and builds an unpacked application on that target. The package verifier checks executable architecture, complete application/source matching, GPL metadata and the exact Electron/Chromium notices from that OS/CPU's checksum-verified upstream archive.
 
+Source lanes run the complete `npm run audit`, including build tools. The builder downloader uses the pinned official `@electron/get` 5.1.0 with a build-only compatibility preload for deadlines, proxies and retry errors. Native lanes use a fresh disposable builder cache, so they exercise downloads rather than relying on a previously populated archive cache.
+
 The packaged desktop suite opens that exact executable with temporary application data. It exercises the renderer/preload/IPC boundary, native Ctrl/Cmd hints, real SQLite utility processes, Unicode paths and parameters, write previews that preserve rows, exports, production database/provider module imports, a real native LZ4 compression roundtrip and Databricks SDK backend selection. Separate packaged suites exercise all five languages and AI configuration against a synthetic loopback provider. No production database or LLM account is used in CI.
 
 Reports identify the target, source/package verification and individual checks. CI uploads reports, then removes the temporary compiled application. It does not publish installers, import signing credentials or submit notarization requests. A green source-only job or a cross-compiled binary alone is insufficient platform acceptance.

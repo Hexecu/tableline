@@ -57,13 +57,18 @@ test("local Mac packages launch without hardened ad-hoc validation while signed 
       module: mocked, require: mockRequire, __dirname: path.join(root, "scripts"), process,
     });
     for (const identity of ["-", "Developer ID Application: Fixture (TEST123)"]) {
-      calls.length = 0;
-      mocked.exports.packageMac({ platform: "darwin", arch: "arm64", identity, outputDir: temporary,
-        run: (file, args) => calls.push({ file, args }), log: () => {} });
-      assert.equal(calls.every(call => call.file === process.execPath), true);
-      const args = calls.at(-1).args;
-      assert.ok(args.includes(identity === "-" ? "--config.mac.hardenedRuntime=false" : "--config.mac.hardenedRuntime=true"));
-      assert.equal(args[args.indexOf("--publish") + 1], "never");
+      for (const cache of [undefined, path.join(temporary, "builder-cache")]) {
+        calls.length = 0;
+        mocked.exports.packageMac({ platform: "darwin", arch: "arm64", identity, outputDir: temporary,
+          env: cache ? { ELECTRON_BUILDER_CACHE: cache } : {},
+          run: (file, args) => calls.push({ file, args }), log: () => {} });
+        assert.equal(calls.every(call => call.file === process.execPath), true);
+        const args = calls.at(-1).args;
+        assert.ok(args.includes(identity === "-" ? "--config.mac.hardenedRuntime=false" : "--config.mac.hardenedRuntime=true"));
+        assert.equal(args[args.indexOf("--publish") + 1], "never");
+        assert.equal(args.some(arg => arg.startsWith("--config.electronDownload.cache=")), !!cache);
+        if (cache) assert.ok(args.includes(`--config.electronDownload.cache=${path.join(cache, "electron")}`));
+      }
     }
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 });

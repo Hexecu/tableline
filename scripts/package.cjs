@@ -65,11 +65,15 @@ function packageApp({
     });
   }
   const args = [
+    "--require", path.join(__dirname, "builder-download.cjs"),
     require.resolve("electron-builder/out/cli/cli.js"),
     platform === "darwin" ? "--mac" : platform === "win32" ? "--win" : "--linux",
     "dir", `--${arch}`, "--publish", "never",
     `--config.directories.output=${output}`,
   ];
+  const builderCache = builderEnv.ELECTRON_BUILDER_CACHE?.trim();
+  if (builderCache && path.isAbsolute(builderCache))
+    args.push(`--config.electronDownload.cache=${path.join(builderCache, "electron")}`);
   if (platform === "darwin") {
     const selected = String(identity || env.TABLELINE_SIGN_IDENTITY || "-").replace(/^Developer ID Application:\s*/, "");
     args.push(`--config.mac.identity=${selected}`, "--config.mac.notarize=false");

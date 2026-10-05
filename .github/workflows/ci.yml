@@ -45,7 +45,7 @@ jobs:
       - run: npm test
       - run: npm run test:i18n
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run audit
 
   native-package:
     name: Packaged desktop / ${{ matrix.platform }} / ${{ matrix.arch }}
@@ -74,7 +74,7 @@ jobs:
       - name: Select disposable package paths on the native runner
         run: >-
           node -e "const fs=require('node:fs'),p=require('node:path'),out=p.join(process.env.RUNNER_TEMP,'tableline-native-package');
-          const vars={TABLELINE_RELEASE_DIR:out,TABLELINE_PLATFORM_BUNDLE:p.join(out,'${{ matrix.bundle }}'),TABLELINE_E2E_EXECUTABLE:p.join(out,'${{ matrix.executable }}')};
+          const vars={TABLELINE_RELEASE_DIR:out,ELECTRON_BUILDER_CACHE:p.join(process.env.RUNNER_TEMP,'tableline-builder-cache'),TABLELINE_PLATFORM_BUNDLE:p.join(out,'${{ matrix.bundle }}'),TABLELINE_E2E_EXECUTABLE:p.join(out,'${{ matrix.executable }}')};
           fs.appendFileSync(process.env.GITHUB_ENV,Object.entries(vars).map(([k,v])=>k+'='+v).join('\n')+'\n')"
       - name: Install isolated Linux desktop and keyring prerequisites
         if: runner.os == 'Linux'
@@ -140,7 +140,7 @@ jobs:
           retention-days: 7
       - name: Remove the temporary application package
         if: always()
-        run: node -e "require('node:fs').rmSync(process.env.TABLELINE_RELEASE_DIR,{recursive:true,force:true})"
+        run: node -e "const fs=require('node:fs');for(const p of [process.env.TABLELINE_RELEASE_DIR,process.env.ELECTRON_BUILDER_CACHE])fs.rmSync(p,{recursive:true,force:true})"
 
   secret-scan:
     name: Public source secret scan
