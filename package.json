@@ -43,7 +43,7 @@
     "electron": "44.5.1",
     "electron-builder": "^26.0.12",
     "undici": "7.30.0",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "8.3.2",
     "playwright": "^1.56.0"
   },
