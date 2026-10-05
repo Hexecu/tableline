@@ -91,12 +91,12 @@ test("release source inventory rejects symlinked runtime entries", () => {
   } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 });
 
-function noticesFixture() {
+function noticesFixture(platform = "darwin", arch = "arm64") {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "tableline-electron-notices-"));
   const output = path.join(root, "extracted");
   const notices = { "LICENSE.electron.txt": "Synthetic Electron MIT notice", "LICENSES.chromium.html": "<html>Synthetic Chromium notices</html>" };
   const manifest = {
-    version: 1, electronVersion: "44.5.1", platform: "darwin", arch: "arm64",
+    version: 1, electronVersion: "44.5.1", platform, arch,
     upstreamArchiveSha256: "a".repeat(64),
     licenses: Object.fromEntries(Object.entries(notices).map(([name, bytes]) => [name, {
       bytes: Buffer.byteLength(bytes), sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
@@ -105,15 +105,29 @@ function noticesFixture() {
   fs.mkdirSync(path.join(root, "assets"), { recursive: true });
   fs.writeFileSync(path.join(root, "assets/electron-notices.json"), JSON.stringify(manifest));
   fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ devDependencies: { electron: "44.5.1" } }));
-  const bundle = path.join(output, "Electron.app");
-  fs.mkdirSync(path.join(bundle, "Contents/Resources"), { recursive: true });
-  fs.writeFileSync(path.join(output, "LICENSE"), notices["LICENSE.electron.txt"]);
+  const bundle = platform === "darwin" ? path.join(output, "Electron.app") : output;
+  fs.mkdirSync(path.join(bundle, platform === "darwin" ? "Contents/Resources" : "resources"), { recursive: true });
+  fs.writeFileSync(path.join(output, platform === "darwin" ? "LICENSE" : "LICENSE.electron.txt"), notices["LICENSE.electron.txt"]);
   fs.writeFileSync(path.join(output, "LICENSES.chromium.html"), notices["LICENSES.chromium.html"]);
   const context = {
-    electronPlatformName: "darwin", arch: Arch.arm64, appOutDir: output,
+    electronPlatformName: platform, arch: Arch[arch], appOutDir: output,
     packager: { projectDir: root, info: { framework: { version: "44.5.1", distMacOsAppName: "Electron.app" } } },
   };
   return { root, output, bundle, context, manifest };
+}
+
+for (const platform of ["linux", "win32"]) {
+  for (const arch of ["arm64", "x64"]) test(`${platform}/${arch} notices survive builder's pre-hook LICENSE rename`, async () => {
+    const f = noticesFixture(platform, arch);
+    try {
+      assert.equal(fs.existsSync(path.join(f.output, "LICENSE")), false);
+      await preserveElectronNotices(f.context);
+      const checked = verifyElectronNotices(f.bundle, { sourceRoot: f.root, arch, platform, electronVersion: "44.5.1" });
+      assert.equal(checked.licenses.length, 2);
+      fs.appendFileSync(path.join(f.bundle, "resources/licenses/LICENSE.electron.txt"), "wrong");
+      assert.throws(() => verifyElectronNotices(f.bundle, { sourceRoot: f.root, arch, platform, electronVersion: "44.5.1" }), /reviewed upstream bytes/);
+    } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+  });
 }
 
 test("official Electron framework plist uses CFBundleVersion without a short version", () => {

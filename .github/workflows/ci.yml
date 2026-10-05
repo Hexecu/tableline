@@ -63,9 +63,6 @@ jobs:
           - { os: windows-11-arm, platform: win32, arch: arm64, bundle: win-arm64-unpacked, executable: win-arm64-unpacked/Tableline.exe }
     env:
       TABLELINE_E2E_CREDENTIALS: "0"
-      TABLELINE_RELEASE_DIR: ${{ runner.temp }}/tableline-native-package
-      TABLELINE_PLATFORM_BUNDLE: ${{ runner.temp }}/tableline-native-package/${{ matrix.bundle }}
-      TABLELINE_E2E_EXECUTABLE: ${{ runner.temp }}/tableline-native-package/${{ matrix.executable }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,6 +71,11 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Select disposable package paths on the native runner
+        run: >-
+          node -e "const fs=require('node:fs'),p=require('node:path'),out=p.join(process.env.RUNNER_TEMP,'tableline-native-package');
+          const vars={TABLELINE_RELEASE_DIR:out,TABLELINE_PLATFORM_BUNDLE:p.join(out,'${{ matrix.bundle }}'),TABLELINE_E2E_EXECUTABLE:p.join(out,'${{ matrix.executable }}')};
+          fs.appendFileSync(process.env.GITHUB_ENV,Object.entries(vars).map(([k,v])=>k+'='+v).join('\n')+'\n')"
       - name: Install isolated Linux desktop and keyring prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y xvfb dbus-x11 gnome-keyring libsecret-1-0
