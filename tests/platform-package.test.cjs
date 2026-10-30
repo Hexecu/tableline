@@ -29,12 +29,12 @@ test("reviewed upstream Electron snapshots cover exactly six supported desktop t
   assert.deepEqual(Object.keys(manifest.distributions).sort(), expected);
   for (const target of expected) {
     const [platform, arch] = target.split("-");
-    const snapshot = noticeSnapshot(root, platform, arch, "44.5.1");
+    const snapshot = noticeSnapshot(root, platform, arch, "44.10.0");
     assert.match(snapshot.upstreamArchiveSha256, /^[a-f\d]{64}$/);
     assert.equal(Object.keys(snapshot.licenses).length, 2);
   }
-  assert.throws(() => noticeSnapshot(root, "linux", "ia32", "44.5.1"));
-  assert.throws(() => noticeSnapshot(root, "darwin", "x64", "44.5.2"));
+  assert.throws(() => noticeSnapshot(root, "linux", "ia32", "44.10.0"));
+  assert.throws(() => noticeSnapshot(root, "darwin", "x64", "44.10.1"));
 });
 test("distribution inventory rejects native kernel but retains Databricks Thrift", () => {
   const thrift = "/node_modules/@databricks/sql/dist/thrift-backend/ThriftBackend.js";
@@ -60,10 +60,19 @@ test("local Mac packages launch without hardened ad-hoc validation while signed 
       for (const cache of [undefined, path.join(temporary, "builder-cache")]) {
         calls.length = 0;
         mocked.exports.packageMac({ platform: "darwin", arch: "arm64", identity, outputDir: temporary,
-          env: cache ? { ELECTRON_BUILDER_CACHE: cache } : {},
-          run: (file, args) => calls.push({ file, args }), log: () => {} });
+          env: { ...(cache ? { ELECTRON_BUILDER_CACHE: cache } : {}),
+            CSC_FOR_PULL_REQUEST: "true", CSC_LINK: "fixture-private-certificate",
+            APPLE_API_KEY: "fixture-private-key", AWS_SECRET_ACCESS_KEY: "fixture-private-secret" },
+          run: (file, args, options) => calls.push({ file, args, options }), log: () => {} });
         assert.equal(calls.every(call => call.file === process.execPath), true);
         const args = calls.at(-1).args;
+        const childEnv = calls.at(-1).options.env;
+        assert.equal(childEnv.CSC_FOR_PULL_REQUEST, identity === "-" ? "true" : undefined);
+        assert.equal(childEnv.CSC_IDENTITY_AUTO_DISCOVERY, "false");
+        assert.equal(args.includes("--config.mac.identity=-"), identity === "-");
+        assert.equal(args.includes("--config.forceCodeSigning=true"), identity !== "-");
+        for (const key of ["CSC_LINK", "APPLE_API_KEY", "AWS_SECRET_ACCESS_KEY"])
+          assert.equal(childEnv[key], undefined);
         assert.ok(args.includes(identity === "-" ? "--config.mac.hardenedRuntime=false" : "--config.mac.hardenedRuntime=true"));
         assert.equal(args[args.indexOf("--publish") + 1], "never");
         assert.equal(args.some(arg => arg.startsWith("--config.electronDownload.cache=")), !!cache);
