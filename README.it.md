@@ -25,11 +25,11 @@ Il selettore di lingua offre **inglese, italiano, francese, tedesco e spagnolo**
 
 ## Database
 
-13 profili: **SQLite, PostgreSQL, Aurora PostgreSQL, CockroachDB, Redshift, MySQL, MariaDB, Aurora MySQL, Databricks SQL, SQL Server, ClickHouse, MongoDB e Redis**. Gli adapter usano driver reali; Aurora usa il protocollo del proprio engine. Databricks, Redshift e ClickHouse sono in lettura. MongoDB e Redis usano operazioni JSON consentite, con scritture revisionate e senza rollback comune.
+14 profili: **SQLite, Amazon Athena, PostgreSQL, Aurora PostgreSQL, CockroachDB, Redshift, MySQL, MariaDB, Aurora MySQL, Databricks SQL, SQL Server, ClickHouse, MongoDB e Redis**. Gli adapter usano driver reali; Aurora usa il protocollo del proprio engine. Athena usa il profilo AWS locale, un ruolo IAM facoltativo e un workgroup. Athena, Databricks, Redshift e ClickHouse sono in lettura. MongoDB e Redis usano operazioni JSON consentite, con scritture revisionate e senza rollback comune.
 
 SQLite, PostgreSQL, MySQL, MongoDB, Redis e ClickHouse hanno prove su fixture locali reali. Account cloud Databricks/Aurora/Redshift e server CockroachDB, MariaDB e SQL Server richiedono una verifica specifica. Consulta [capacità e limiti](docs/DATABASES.md) e [validazione](docs/VALIDATION.md).
 
-Le nuove connessioni sono in lettura. TLS verifica i certificati remoti quando attivo; i ruoli nel database restano l'autorità sul server. Questa versione non implementa tunnel SSH, IAM/OAuth dei database, Oracle, Snowflake, BigQuery, Cassandra, DuckDB, Elasticsearch, DDL, backup/restore o importazioni massive.
+Le nuove connessioni sono in lettura. Prima di usare Athena completa il login AWS SSO per il profilo scelto. TLS verifica i certificati remoti quando attivo; i ruoli nel database restano l'autorità sul server. Questa versione non implementa tunnel SSH, IAM/OAuth per gli altri database, Oracle, Snowflake, BigQuery, Cassandra, DuckDB, Elasticsearch, DDL, backup/restore o importazioni massive.
 
 ## Assistente
 

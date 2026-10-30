@@ -99,11 +99,11 @@ const check = async (name, work) => {
     const imported = await app.evaluate(({ app }) => {
       const { createRequire } = process.getBuiltinModule("module");
       const appRequire = createRequire(process.getBuiltinModule("path").join(app.getAppPath(), "package.json"));
-      const dependencies = ["pg", "mysql2", "mssql", "mongodb", "redis", "@clickhouse/client", "@databricks/sql",
+      const dependencies = ["pg", "mysql2", "mssql", "mongodb", "redis", "@clickhouse/client", "@databricks/sql", "@aws-sdk/client-athena",
         "@aws-sdk/client-bedrock", "@aws-sdk/client-bedrock-runtime", "@aws-sdk/credential-providers", "google-auth-library"];
       return dependencies.map(name => { appRequire(name); return name; });
     });
-    assert.equal(imported.length, 11);
+    assert.equal(imported.length, 12);
   });
   await check("Native LZ4 binding roundtrips UTF-8 using the packaged Electron ABI", async () => {
     const result = await app.evaluate(({ app }) => {

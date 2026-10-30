@@ -29,12 +29,12 @@ Open **Local demo** to use a real SQLite database with 120 customers, 36 product
 | PostgreSQL | PostgreSQL, Aurora PostgreSQL, CockroachDB | Reviewed transactional writes |
 | MySQL | MySQL, MariaDB, Aurora MySQL | Reviewed transactional writes; InnoDB required |
 | SQL Server | SQL Server | Reviewed transactional writes |
-| Analytics | Databricks SQL, Redshift, ClickHouse | Read-only |
+| Analytics | Amazon Athena, Databricks SQL, Redshift, ClickHouse | Read-only |
 | Document / key-value | MongoDB, Redis | Reviewed allowlisted JSON operations; no shared rollback |
 
 Adapters use real client libraries. Aurora profiles use their engine's protocol. The catalog exposes each adapter's capabilities; it does not imply live cloud certification. Local fixture checks cover SQLite, PostgreSQL, MySQL, MongoDB, Redis and ClickHouse. Live Databricks/Aurora/Redshift accounts, CockroachDB, MariaDB and SQL Server need separate acceptance tests. See [database capabilities](docs/DATABASES.md) and [validation](docs/VALIDATION.md).
 
-New connections start read-only. TLS verifies remote certificates when enabled. Database principals remain the server-side authority. SSH tunnels, database IAM/OAuth, Oracle, Snowflake, BigQuery, Cassandra, DuckDB, Elasticsearch, DDL, backup/restore and bulk import are not implemented in this release.
+New connections start read-only. Athena uses a local AWS profile, an optional assumed role, and a selected workgroup; complete AWS SSO login before connecting. TLS verifies remote certificates when enabled. Database principals remain the server-side authority. SSH tunnels, database IAM/OAuth for other engines, Oracle, Snowflake, BigQuery, Cassandra, DuckDB, Elasticsearch, DDL, backup/restore and bulk import are not implemented in this release.
 
 ## Assistant
 

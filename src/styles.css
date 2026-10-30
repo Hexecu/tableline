@@ -363,6 +363,7 @@ html[data-platform="linux"] .window-space {
   background: var(--soft);
 }
 .engine-mark.sqlserver,
+.engine-mark.athena,
 .engine-mark.redshift {
   color: #8370a0;
   background: var(--purple-soft);

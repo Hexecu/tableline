@@ -97,6 +97,7 @@ const driverMarks: Record<string, string> = {
   mysql: "My",
   mariadb: "Ma",
   databricks: "Db",
+  athena: "At",
   "aurora-postgresql": "Au",
   "aurora-mysql": "Au",
   redshift: "Rs",
@@ -153,6 +154,7 @@ export function Connections({
   const selected = catalog.find((d) => d.id === engine);
   const local = engine === "sqlite";
   const dbx = engine === "databricks";
+  const athena = engine === "athena";
   const mongo = engine === "mongodb";
   function set(k: string, v: any) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -247,6 +249,7 @@ export function Connections({
                       ...f,
                       port: d.defaultPort,
                       name: d.name,
+                      ...(d.id === "athena" ? { host: "", database: "" } : {}),
                     }));
                   }}
                 >
@@ -303,6 +306,47 @@ export function Connections({
                   </button>
                 </div>
               </label>
+            ) : athena ? (
+              <>
+                <label>
+                  {translate("Profilo AWS")}<input
+                    aria-label={translate("Profilo AWS")}
+                    value={form.awsProfile || ""}
+                    onChange={(e) => set("awsProfile", e.target.value)}
+                  />
+                </label>
+                <label>
+                  {translate("Regione")}<input
+                    aria-label={translate("Regione")}
+                    value={form.region || ""}
+                    onChange={(e) => set("region", e.target.value)}
+                  />
+                </label>
+                <label className="full">
+                  {translate("Workgroup Athena")}<input
+                    aria-label={translate("Workgroup Athena")}
+                    value={form.workgroup || ""}
+                    onChange={(e) => set("workgroup", e.target.value)}
+                  />
+                </label>
+                <label className="full">
+                  {translate("ARN ruolo IAM (opzionale)")}<input
+                    aria-label={translate("ARN ruolo IAM (opzionale)")}
+                    value={form.roleArn || ""}
+                    onChange={(e) => set("roleArn", e.target.value)}
+                  />
+                </label>
+                <label className="full">
+                  {translate("Database predefinito (opzionale)")}<input
+                    aria-label={translate("Database predefinito (opzionale)")}
+                    value={form.database || ""}
+                    onChange={(e) => set("database", e.target.value)}
+                  />
+                </label>
+                <div className="connection-capability full">
+                  {translate("Usa il login AWS SSO locale. Le credenziali temporanee si rinnovano automaticamente.")}
+                </div>
+              </>
             ) : (
               <>
                 <label className={dbx ? "full" : ""}>

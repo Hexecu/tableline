@@ -1025,6 +1025,7 @@ export default function App() {
                   "postgres",
                   "mysql",
                   "databricks",
+                  "athena",
                   "sqlite",
                   "mongodb",
                   "redis",
@@ -1043,7 +1044,7 @@ export default function App() {
               <div className="workspace-header">
                 <div className="breadcrumb">
                   <Database size={15} />
-                  <span>{connection.database || "demo"}</span>
+                  <span>{connection.database || (connection.driver === "athena" ? "AwsDataCatalog" : "demo")}</span>
                   <ChevronRight size={12} />
                   <strong>
                     {view === "sql" ? (tab.name === "Query" ? translate("Query") : tab.name) : table?.name || translate("Database")}
@@ -1425,6 +1426,8 @@ export default function App() {
                           loading ||
                           (connection.driver === "redis"
                             ? !output?.cursor || output.cursor === "0"
+                            : connection.driver === "athena"
+                              ? !output?.truncated
                             : total !== undefined
                               ? offset + limit >= total
                               : (output?.rows.length || 0) < limit)
@@ -1478,6 +1481,8 @@ export default function App() {
           {connection
             ? connection.driver === "sqlite"
               ? translate("SQLite · locale")
+              : connection.driver === "athena"
+                ? `Athena · ${connection.region || ""}`
               : `${connection.driver} · ${connection.host || ""}`
             : translate("Nessuna connessione")}
           {connection && (
