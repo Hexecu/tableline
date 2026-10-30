@@ -877,6 +877,54 @@ async function launch() {
       await firstCell(120);
     },
   );
+  await check("UI cell context menu preserves full values and row JSON", async () => {
+    const longValue =
+      "Inizio 👩‍💻 — città d'arte, 東京, مرحبا, café.\n" +
+      "Una riga Unicode con emoji 🧪 e accenti àèìòù. ".repeat(70) +
+      "\nFine ✅";
+    await page.keyboard.press(
+      process.platform === "darwin" ? "Meta+t" : "Control+t",
+    );
+    await page.getByLabel("Editor SQL", { exact: true }).fill(
+      `SELECT 7 AS id, '${longValue.replaceAll("'", "''")}' AS note, NULL AS vacant`,
+    );
+    await page.locator(".run-button").click();
+    await firstCell(7);
+    const cell = page.locator(".data-grid tbody tr").first().locator("td").nth(2);
+    const menu = page.getByTestId("cell-context-menu");
+
+    await cell.click({ button: "right" });
+    await menu.waitFor();
+    await menu.getByTestId("copy-cell-value").click();
+    await menu.waitFor({ state: "hidden" });
+    assert.equal(await app.evaluate(({ clipboard }) => clipboard.readText()), longValue);
+
+    await cell.focus();
+    await cell.press("Shift+F10");
+    await menu.waitFor();
+    await page.keyboard.press("Escape");
+    await menu.waitFor({ state: "hidden" });
+
+    await cell.focus();
+    await cell.press("Shift+F10");
+    await menu.getByRole("menuitem", { name: "Visualizza dato", exact: true }).click();
+    const viewer = page.getByTestId("cell-value-viewer");
+    await viewer.waitFor();
+    assert.equal(await viewer.locator("pre").textContent(), longValue);
+    await viewer.getByRole("button", { name: "Copia valore", exact: true }).click();
+    assert.equal(await app.evaluate(({ clipboard }) => clipboard.readText()), longValue);
+    await page.keyboard.press("Escape");
+    await viewer.waitFor({ state: "hidden" });
+
+    await cell.focus();
+    await cell.press("Shift+F10");
+    await menu.getByTestId("copy-row-json").click();
+    await menu.waitFor({ state: "hidden" });
+    assert.deepEqual(
+      JSON.parse(await app.evaluate(({ clipboard }) => clipboard.readText())),
+      { id: 7, note: longValue, vacant: null },
+    );
+  });
   await check("UI cell edit, discard, approval and clipboard", async () => {
     await page.getByRole("button", { name: "Tabelle", exact: true }).click();
     await page

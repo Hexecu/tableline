@@ -3,7 +3,8 @@
 
 import { translate, formatNumber, formatDate, getLanguage, languageNames, supportedLanguages } from "./i18n";
 import { useI18n } from "./LocaleProvider";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowDown,
   ArrowUp,
@@ -61,7 +62,103 @@ export function DataGrid({
   useI18n();
 
   const grid = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const viewerRef = useRef<HTMLElement>(null);
+  const originRef = useRef<HTMLElement | null>(null);
+  const [menu, setMenu] = useState<{
+    row: Record<string, unknown>;
+    column: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 });
+  const [viewer, setViewer] = useState<{
+    row: Record<string, unknown>;
+    column: string;
+  } | null>(null);
+
+  function restoreCellFocus() {
+    const origin = originRef.current;
+    if (origin?.isConnected) requestAnimationFrame(() => origin.focus());
+  }
+
+  function closeMenu(restoreFocus = true) {
+    setMenu(null);
+    if (restoreFocus) restoreCellFocus();
+  }
+
+  function closeViewer() {
+    setViewer(null);
+    restoreCellFocus();
+  }
+
+  function openMenu(
+    cell: HTMLTableCellElement,
+    row: Record<string, unknown>,
+    column: string,
+    index: number,
+    x: number,
+    y: number,
+  ) {
+    originRef.current = cell;
+    cell.focus();
+    onSelect(row, column, index);
+    setViewer(null);
+    setMenuPosition({ left: x, top: y });
+    setMenu({ row, column, x, y });
+  }
+
+  useLayoutEffect(() => {
+    if (!menu) return;
+    function clampMenu() {
+      const box = menuRef.current?.getBoundingClientRect();
+      if (!box) return;
+      const margin = 8;
+      setMenuPosition({
+        left: Math.max(margin, Math.min(menu!.x, window.innerWidth - box.width - margin)),
+        top: Math.max(margin, Math.min(menu!.y, window.innerHeight - box.height - margin)),
+      });
+    }
+    clampMenu();
+    menuRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    window.addEventListener("resize", clampMenu);
+    return () => window.removeEventListener("resize", clampMenu);
+  }, [menu]);
+
+  useEffect(() => {
+    if (!menu) return;
+    function closeOutside(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) closeMenu(false);
+    }
+    document.addEventListener("pointerdown", closeOutside, true);
+    return () => document.removeEventListener("pointerdown", closeOutside, true);
+  }, [menu]);
+
+  useEffect(() => {
+    if (viewer) viewerRef.current?.focus();
+  }, [viewer]);
+
+  useEffect(() => {
+    if (!menu && !viewer) return;
+    function dismiss(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (viewer) closeViewer();
+      else closeMenu();
+    }
+    // Capture Escape before the app's window shortcut handler sees it.
+    document.addEventListener("keydown", dismiss, true);
+    return () => document.removeEventListener("keydown", dismiss, true);
+  }, [menu, viewer]);
+
+  async function copyMenuValue(value: string) {
+    await navigator.clipboard.writeText(value);
+    closeMenu();
+  }
+
   return (
+    <>
     <div
       className={"grid-scroll " + (loading ? "loading" : "")}
       ref={grid}
@@ -128,11 +225,22 @@ export function DataGrid({
                       (typeof value === "number" ? " numeric" : "")
                     }
                     tabIndex={0}
-                    title={text}
+                    title={menu ? undefined : text}
                     onClick={() => onSelect(row, c.name, index)}
                     onFocus={() => onSelect(row, c.name, index)}
                     onDoubleClick={() => onEdit?.(row, c.name)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      openMenu(e.currentTarget, row, c.name, index, e.clientX, e.clientY);
+                    }}
                     onKeyDown={(e) => {
+                      if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+                        e.preventDefault();
+                        const cell = e.currentTarget;
+                        const bounds = cell.getBoundingClientRect();
+                        openMenu(cell, row, c.name, index, bounds.left + 24, bounds.bottom);
+                        return;
+                      }
                       if (
                         [
                           "ArrowUp",
@@ -219,6 +327,103 @@ export function DataGrid({
         </div>
       )}
     </div>
+    {menu && createPortal(
+      <div
+        className="cell-context-menu"
+        data-testid="cell-context-menu"
+        role="menu"
+        ref={menuRef}
+        style={{ left: menuPosition.left, top: menuPosition.top }}
+        onKeyDown={(e) => {
+          const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>("button") || []);
+          const current = items.indexOf(document.activeElement as HTMLButtonElement);
+          if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Tab") {
+            e.preventDefault();
+            const direction = e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey) ? -1 : 1;
+            items[(current + direction + items.length) % items.length]?.focus();
+          } else if (e.key === "Home" || e.key === "End") {
+            e.preventDefault();
+            items[e.key === "Home" ? 0 : items.length - 1]?.focus();
+          }
+        }}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          onClick={() => {
+            setMenu(null);
+            setViewer({ row: menu.row, column: menu.column });
+          }}
+        >
+          {translate("Visualizza dato")}
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="copy-cell-value"
+          onClick={() => void copyMenuValue(labelValue(menu.row[menu.column]))}
+        >
+          {translate("Copia valore")}
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          data-testid="copy-row-json"
+          onClick={() => void copyMenuValue(JSON.stringify(menu.row, null, 2))}
+        >
+          {translate("Copia riga come JSON")}
+        </button>
+      </div>,
+      document.body,
+    )}
+    {viewer && createPortal(
+      <div
+        className="cell-value-overlay"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) closeViewer();
+        }}
+      >
+        <section
+          className="cell-value-viewer"
+          data-testid="cell-value-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label={translate("Valore della cella")}
+          tabIndex={-1}
+          ref={viewerRef}
+          onKeyDown={(e) => {
+            if (e.key !== "Tab") return;
+            const controls = Array.from(viewerRef.current?.querySelectorAll<HTMLButtonElement>("button") || []);
+            const first = controls[0], last = controls.at(-1);
+            if (e.shiftKey && (document.activeElement === first || document.activeElement === viewerRef.current)) {
+              e.preventDefault();
+              last?.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first?.focus();
+            }
+          }}
+        >
+          <header>
+            <div>
+              <strong>{translate("Valore della cella")}</strong>
+              <span>{viewer.column}</span>
+            </div>
+            <button type="button" className="icon-button" aria-label={translate("Chiudi valore")} onClick={closeViewer}>
+              <X size={17} />
+            </button>
+          </header>
+          <pre>{prettyValue(viewer.row[viewer.column])}</pre>
+          <footer>
+            <button type="button" className="text-button" onClick={() => void navigator.clipboard.writeText(labelValue(viewer.row[viewer.column]))}>
+              <Copy size={14} /> {translate("Copia valore")}
+            </button>
+          </footer>
+        </section>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
 export function Structure({ table }: { table: Table | null }) {
