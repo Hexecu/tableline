@@ -119,6 +119,15 @@ async function rowsReady() {
       !document.querySelector(".grid-progress"),
   );
 }
+async function waitForClipboard(expected) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if (await app.evaluate(({ clipboard }) => clipboard.readText()) === expected)
+      return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("Clipboard did not update to the expected fixture value.");
+}
 async function readExport(filename) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -897,7 +906,7 @@ async function launch() {
     await menu.waitFor();
     await menu.getByTestId("copy-cell-value").click();
     await menu.waitFor({ state: "hidden" });
-    assert.equal(await app.evaluate(({ clipboard }) => clipboard.readText()), longValue);
+    await waitForClipboard(longValue);
 
     await cell.focus();
     await cell.press("Shift+F10");
@@ -911,8 +920,9 @@ async function launch() {
     const viewer = page.getByTestId("cell-value-viewer");
     await viewer.waitFor();
     assert.equal(await viewer.locator("pre").textContent(), longValue);
+    await app.evaluate(({ clipboard }) => clipboard.writeText("TABLELINE-E2E-CLIPBOARD-SENTINEL"));
     await viewer.getByRole("button", { name: "Copia valore", exact: true }).click();
-    assert.equal(await app.evaluate(({ clipboard }) => clipboard.readText()), longValue);
+    await waitForClipboard(longValue);
     await page.keyboard.press("Escape");
     await viewer.waitFor({ state: "hidden" });
 
@@ -920,10 +930,7 @@ async function launch() {
     await cell.press("Shift+F10");
     await menu.getByTestId("copy-row-json").click();
     await menu.waitFor({ state: "hidden" });
-    assert.deepEqual(
-      JSON.parse(await app.evaluate(({ clipboard }) => clipboard.readText())),
-      { id: 7, note: longValue, vacant: null },
-    );
+    await waitForClipboard(JSON.stringify({ id: 7, note: longValue, vacant: null }, null, 2));
   });
   await check("UI cell edit, discard, approval and clipboard", async () => {
     await page.getByRole("button", { name: "Tabelle", exact: true }).click();
@@ -990,10 +997,7 @@ async function launch() {
       .nth(2)
       .click();
     await page.getByRole("button", { name: "Copia name", exact: true }).click();
-    assert.equal(
-      await app.evaluate(({ clipboard }) => clipboard.readText()),
-      "UI approved",
-    );
+    await waitForClipboard("UI approved");
     await page
       .getByRole("button", { name: "Chiudi dettaglio", exact: true })
       .click();
