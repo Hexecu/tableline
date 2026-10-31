@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "electron .",
     "test": "node scripts/test.cjs",
-    "audit": "npm audit --audit-level=moderate",
+    "audit": "node scripts/audit.cjs",
     "test:e2e": "node scripts/e2e.cjs",
     "package": "node scripts/package.cjs",
     "release:macos": "node scripts/release-macos.cjs",
