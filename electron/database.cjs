@@ -8,6 +8,7 @@ const crypto = require("node:crypto");
 const { performance } = require("node:perf_hooks");
 const { guardSql, quoteIdentifier } = require("./sql-guard.cjs");
 const { SQLiteDriver } = require("./drivers/sqlite.cjs");
+const { AthenaDriver } = require("./drivers/athena.cjs");
 const {
   PostgresDriver,
   MySQLDriver,
@@ -63,6 +64,22 @@ const NETWORK_FIELDS = [
 ];
 const CATALOG = [
   descriptor("sqlite", "SQLite", "sqlite", null, ["filePath"]),
+  descriptor(
+    "athena",
+    "Amazon Athena",
+    "athena",
+    null,
+    ["awsProfile", "region", "roleArn", "workgroup", "database"],
+    {
+      write: false,
+      guardedWrites: false,
+      transactions: false,
+      transactional: false,
+      cancel: true,
+      writePreview: "unsupported",
+      parameters: "?",
+    },
+  ),
   descriptor("postgres", "PostgreSQL", "postgres", 5432, NETWORK_FIELDS),
   descriptor(
     "aurora-postgresql",
@@ -154,6 +171,7 @@ const CATALOG = [
 ];
 const DRIVER_TYPES = {
   sqlite: SQLiteDriver,
+  athena: AthenaDriver,
   postgres: PostgresDriver,
   mysql: MySQLDriver,
   sqlserver: SQLServerDriver,
@@ -163,7 +181,7 @@ const DRIVER_TYPES = {
   redis: RedisDriver,
 };
 const PROFILE_KEYS = new Set(
-  "id name driver host port database username filePath httpPath catalog schema ssl tls sslCA color readOnly".split(
+  "id name driver host port database username filePath httpPath catalog schema ssl tls sslCA color readOnly awsProfile region roleArn workgroup".split(
     " ",
   ),
 );

@@ -1178,3 +1178,79 @@ test("failed AI profile save preserves a concurrent credential replacement inste
   assert.equal(decryptions(), 0);
   assert.deepEqual(await vault.get("ai-weak"), { apiKey: "synthetic-concurrent-owner-key" });
 });
+
+async function unreadableCredentialFixture(t, profile = {}, oldCredentials = { apiKey: "synthetic-old-key", bearerToken: "synthetic-old-token" }) {
+  const { AIVault } = require("../electron/ai-vault.cjs");
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "tableline-ai-unreadable-recovery-"));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  let unreadable = false, decryptions = 0;
+  const safeStorage = {
+    isAsyncEncryptionAvailable: async () => true,
+    async encryptStringAsync(value) {
+      const bytes = Buffer.from(value);
+      for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
+      return Buffer.concat([Buffer.from("v11"), bytes]);
+    },
+    async decryptStringAsync(value) {
+      decryptions++;
+      if (unreadable) throw new Error("Synthetic native decryption failure");
+      assert.equal(value.subarray(0, 3).toString(), "v11");
+      const bytes = Buffer.from(value.subarray(3));
+      for (let i = 0; i < bytes.length; i++) bytes[i] ^= 0xb9;
+      return { result: bytes.toString(), shouldReEncrypt: false };
+    },
+  };
+  const vault = new AIVault({ directory, safeStorage, platform: "darwin" });
+  const { service } = await fixture(t, undefined, { vault });
+  await service.save({
+    id: "unreadable", provider: "litellm", authMode: "apiKey", model: "fixture-model", ...profile,
+  }, oldCredentials);
+  const before = await fs.readFile(vault.file);
+  unreadable = true;
+  return {
+    service, vault, before,
+    decryptions: () => decryptions,
+    enableDecryption: () => { unreadable = false; },
+  };
+}
+
+test("AI profile replaces unreadable ciphertext with a complete LiteLLM API key", async t => {
+  const { service, vault, before, decryptions, enableDecryption } = await unreadableCredentialFixture(t);
+  await service.save({ id: "unreadable", name: "Recovered" }, { apiKey: "synthetic-new-key" });
+  assert.equal(decryptions(), 1);
+  assert.notDeepEqual(await fs.readFile(vault.file), before);
+  enableDecryption();
+  assert.deepEqual(await vault.get("ai-unreadable"), { apiKey: "synthetic-new-key" });
+  const settings = await service.settings();
+  assert.equal(settings.profiles.find(p => p.id === "unreadable").name, "Recovered");
+  assert.equal(settings.profiles.find(p => p.id === "unreadable").hasCredential, true);
+});
+
+for (const [profile, oldCredentials, replacement] of [
+  [{ authMode: "bearer" }, { bearerToken: "synthetic-old-token" }, { apiKey: "synthetic-incomplete-key" }],
+  [{ provider: "bedrock", authMode: "aws" },
+    { accessKeyId: "synthetic-old-id", secretAccessKey: "synthetic-old-secret" },
+    { accessKeyId: "synthetic-new-id" }],
+]) {
+  test(`AI profile rejects incomplete replacement of unreadable ${profile.authMode} credentials`, async t => {
+    const { service, vault, before, decryptions } = await unreadableCredentialFixture(t, profile, oldCredentials);
+    await assert.rejects(
+      service.save({ id: "unreadable", name: "Unpersisted rename" }, replacement),
+      /Impossibile sbloccare le credenziali AI/,
+    );
+    assert.equal(decryptions(), 1);
+    assert.deepEqual(await fs.readFile(vault.file), before);
+    assert.notEqual((await service.settings()).profiles.find(p => p.id === "unreadable").name, "Unpersisted rename");
+  });
+}
+
+test("failed AI profile save restores exact unreadable ciphertext after complete replacement", async t => {
+  const { service, vault, before, decryptions } = await unreadableCredentialFixture(t);
+  service.persist = async () => { throw new Error("Synthetic metadata persistence failure"); };
+  await assert.rejects(
+    service.save({ id: "unreadable", name: "Unpersisted rename" }, { apiKey: "synthetic-new-key" }),
+    /Synthetic metadata persistence failure/,
+  );
+  assert.equal(decryptions(), 1);
+  assert.deepEqual(await fs.readFile(vault.file), before);
+});

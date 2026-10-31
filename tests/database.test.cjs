@@ -595,8 +595,8 @@ for (const code of ["SECURE_STORAGE_TIMEOUT", "SECURE_STORAGE_BLOCKED", "CORRUPT
 }
 test("catalog reports unverified rollback engines honestly", async () => {
   const catalog = await db.catalog();
-  assert.equal(catalog.length, 13);
-  for (const id of ["databricks", "clickhouse", "redshift"])
+  assert.equal(catalog.length, 14);
+  for (const id of ["athena", "databricks", "clickhouse", "redshift"])
     assert.equal(catalog.find((c) => c.id === id).capabilities.write, false);
   for (const id of ["mongodb", "redis"])
     assert.equal(

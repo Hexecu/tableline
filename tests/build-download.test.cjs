@@ -83,7 +83,7 @@ test("build graph excludes the vulnerable cache chain and keeps official Electro
     );
   assert.equal(get.downloadArtifact.name, "downloadArtifact");
   assert.equal(lock.packages["node_modules/@electron/get"].version, "5.1.0");
-  assert.equal(lock.packages["node_modules/undici"].version, "7.30.0");
+  assert.equal(lock.packages["node_modules/undici"].version, "7.30.1");
 });
 
 test("official artifact download verifies cold, warm and tampered caches and preserves progress", async (t) => {

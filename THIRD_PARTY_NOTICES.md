@@ -53,9 +53,9 @@ The application uses the following main open-source packages. Their source distr
 | ClickHouse JavaScript client | Apache-2.0 |
 | AWS SDK for JavaScript v3 | Apache-2.0 |
 | Google Auth Library for Node.js | Apache-2.0 |
-| Databricks native SQL kernel and FlatBuffers | Apache-2.0 |
+| FlatBuffers JavaScript runtime | Apache-2.0 |
 | LZ4 N-API native bindings | MIT |
 | TypeScript, Playwright | Apache-2.0; build and test tooling |
 | Vite, electron-builder | MIT; build tooling |
 
-`package-lock.json` identifies exact dependency versions. The installed runtime dependency license inventory uses MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause and 0BSD, including the Apache-2.0 text in FlatBuffers' `LICENSE`. Platform-specific optional packages differ by installation. Transitive packages keep their distributed copyright and license notices; Electron's Chromium notices must remain in distributed bundles. No third-party service grants or account rights are implied by the integration adapters.
+`package-lock.json` identifies exact dependency versions. The installed runtime dependency license inventory uses MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause and 0BSD, including the Apache-2.0 text in FlatBuffers' `LICENSE`. The Databricks SQL JavaScript Thrift backend is included; its optional native SQL kernel binary and platform package are excluded from Tableline 0.2.2. Platform-specific optional packages differ by installation. Transitive packages keep their distributed copyright and license notices; Electron's Chromium notices must remain in distributed bundles. No third-party service grants or account rights are implied by the integration adapters.

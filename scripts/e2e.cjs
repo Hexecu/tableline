@@ -119,6 +119,15 @@ async function rowsReady() {
       !document.querySelector(".grid-progress"),
   );
 }
+async function waitForClipboard(expected) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    if (await app.evaluate(({ clipboard }) => clipboard.readText()) === expected)
+      return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("Clipboard did not update to the expected fixture value.");
+}
 async function readExport(filename) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -877,6 +886,52 @@ async function launch() {
       await firstCell(120);
     },
   );
+  await check("UI cell context menu preserves full values and row JSON", async () => {
+    const longValue =
+      "Inizio 👩‍💻 — città d'arte, 東京, مرحبا, café.\n" +
+      "Una riga Unicode con emoji 🧪 e accenti àèìòù. ".repeat(70) +
+      "\nFine ✅";
+    await page.keyboard.press(
+      process.platform === "darwin" ? "Meta+t" : "Control+t",
+    );
+    await page.getByLabel("Editor SQL", { exact: true }).fill(
+      `SELECT 7 AS id, '${longValue.replaceAll("'", "''")}' AS note, NULL AS vacant`,
+    );
+    await page.locator(".run-button").click();
+    await firstCell(7);
+    const cell = page.locator(".data-grid tbody tr").first().locator("td").nth(2);
+    const menu = page.getByTestId("cell-context-menu");
+
+    await cell.click({ button: "right" });
+    await menu.waitFor();
+    await menu.getByTestId("copy-cell-value").click();
+    await menu.waitFor({ state: "hidden" });
+    await waitForClipboard(longValue);
+
+    await cell.focus();
+    await cell.press("Shift+F10");
+    await menu.waitFor();
+    await page.keyboard.press("Escape");
+    await menu.waitFor({ state: "hidden" });
+
+    await cell.focus();
+    await cell.press("Shift+F10");
+    await menu.getByRole("menuitem", { name: "Visualizza dato", exact: true }).click();
+    const viewer = page.getByTestId("cell-value-viewer");
+    await viewer.waitFor();
+    assert.equal(await viewer.locator("pre").textContent(), longValue);
+    await app.evaluate(({ clipboard }) => clipboard.writeText("TABLELINE-E2E-CLIPBOARD-SENTINEL"));
+    await viewer.getByRole("button", { name: "Copia valore", exact: true }).click();
+    await waitForClipboard(longValue);
+    await page.keyboard.press("Escape");
+    await viewer.waitFor({ state: "hidden" });
+
+    await cell.focus();
+    await cell.press("Shift+F10");
+    await menu.getByTestId("copy-row-json").click();
+    await menu.waitFor({ state: "hidden" });
+    await waitForClipboard(JSON.stringify({ id: 7, note: longValue, vacant: null }, null, 2));
+  });
   await check("UI cell edit, discard, approval and clipboard", async () => {
     await page.getByRole("button", { name: "Tabelle", exact: true }).click();
     await page
@@ -942,10 +997,7 @@ async function launch() {
       .nth(2)
       .click();
     await page.getByRole("button", { name: "Copia name", exact: true }).click();
-    assert.equal(
-      await app.evaluate(({ clipboard }) => clipboard.readText()),
-      "UI approved",
-    );
+    await waitForClipboard("UI approved");
     await page
       .getByRole("button", { name: "Chiudi dettaglio", exact: true })
       .click();

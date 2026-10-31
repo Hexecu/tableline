@@ -425,9 +425,11 @@ class AIVault {
       if (error.code === "SECURE_STORAGE_TIMEOUT") throw timeoutError();
       if (error.code === "SECURE_STORAGE_BLOCKED") throw blockedError();
       if (error.code === "SECURE_STORAGE_INSECURE") throw insecureError();
-      throw new Error(
+      const unreadable = new Error(
         "Impossibile sbloccare le credenziali AI. Importale nuovamente nel profilo.",
       );
+      unreadable.code = "SECURE_STORAGE_UNREADABLE";
+      throw unreadable;
     }
   }
   async set(id, credentials) {

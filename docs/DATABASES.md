@@ -3,6 +3,7 @@
 | Profilo           | Driver reale                     | Query                      | Scritture                                     | Verifica                                                 |
 | ----------------- | -------------------------------- | -------------------------- | --------------------------------------------- | -------------------------------------------------------- |
 | SQLite            | `node:sqlite`, processo dedicato | SQL                        | INSERT, UPDATE, DELETE con anteprima e commit | File reale, servizio e app desktop                       |
+| Amazon Athena     | `@aws-sdk/client-athena`         | SQL, AWS SSO e workgroup   | Disabilitate                                  | SDK e account AWS da verificare                          |
 | PostgreSQL        | `pg`                             | SQL, transazione READ ONLY | Proposta non eseguita, transazione al commit  | Server Docker isolato                                    |
 | Aurora PostgreSQL | `pg`                             | SQL                        | Come PostgreSQL                               | Contratto; cluster AWS non verificato                    |
 | CockroachDB       | `pg`                             | SQL                        | Come PostgreSQL                               | Contratto; server non verificato                         |
@@ -64,3 +65,5 @@ MongoDB e Redis mostrano una stima o lo stato attuale. Le scritture non hanno ro
 I profili nuovi sono in lettura. TLS verifica i certificati remoti; per i server locali di test puoi configurare esplicitamente una connessione senza TLS. Non vengono modificati i ruoli nel database. SQL Server non offre una transazione READ ONLY: usa un principal di sola lettura per applicare la policy anche sul server.
 
 Databricks richiede un warehouse, host, HTTP path e token. Aurora usa host/porta/database/utente del cluster e TLS; IAM e tunnel SSH non sono implementati. I provider LLM e i database hanno vault namespace separati.
+
+Athena usa il profilo AWS locale, la regione e un workgroup. Puoi indicare un ARN di ruolo IAM: Tableline lo assume con le credenziali del profilo e rinnova automaticamente le credenziali temporanee. Per i profili SSO devi prima completare il login con `aws sso login --profile <profilo>`; quando scade, ripeti il login. Il database predefinito è facoltativo: se lo lasci vuoto, lo schema elenca i database visibili al ruolo. I permessi AWS, il limite di scansione e la cifratura dei risultati devono essere configurati nel workgroup e nel ruolo. Tableline esegue solo letture e non salva copie delle tabelle; esportazioni, cronologia SQL e richieste esplicite all'assistente possono comunque contenere dati.

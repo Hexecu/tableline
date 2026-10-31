@@ -256,6 +256,10 @@ test("vault sanitizes secure-storage exceptions and preserves existing ciphertex
   safeStorage.decryptStringAsync = () => {
     throw new Error(`OS decryption failed: ${PROVIDER_ERROR}`);
   };
+  await assert.rejects(
+    vault.get("connection-a"),
+    { code: "SECURE_STORAGE_UNREADABLE" },
+  );
   await rejectsWithoutSecret(() => vault.get("connection-a"));
   assertNoPlaintext(directory, [FIRST, SECOND, PROVIDER_ERROR]);
 });

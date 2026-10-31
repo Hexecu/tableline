@@ -11,7 +11,7 @@ Tableline 0.2.2 targets six native desktop combinations. Compatibility is tied t
 | Windows | x64 | Windows Server 2025 |
 | Windows | arm64 | Windows 11 ARM |
 
-Electron 44.5.1 requires macOS 13 or later and supports 64-bit desktop targets. The runtime's [versioned platform requirements](https://github.com/electron/electron/blob/v44.5.1/README.md) are a minimum; the table identifies the systems actually exercised by CI. Linux checks use Ubuntu 24.04 with glibc and X11/Xvfb. GPU drivers and Wayland configurations are not certified. Alpine/musl, 32-bit systems, FreeBSD and old unsupported OS releases are outside this matrix. Windows Server CI does not establish every Windows desktop build or enterprise policy configuration.
+Electron 44.10.0 requires macOS 13 or later and supports 64-bit desktop targets. The runtime's [versioned platform requirements](https://github.com/electron/electron/blob/v44.10.0/README.md) are a minimum; the table identifies the systems actually exercised by CI. Linux checks use Ubuntu 24.04 with glibc and X11/Xvfb. GPU drivers and Wayland configurations are not certified. Alpine/musl, 32-bit systems, FreeBSD and old unsupported OS releases are outside this matrix. Windows Server CI does not establish every Windows desktop build or enterprise policy configuration.
 
 ## Required checks
 

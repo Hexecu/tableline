@@ -106,6 +106,18 @@ function profileId(id) {
     throw new Error("ID profilo non valido.");
   return id;
 }
+function completeCredentialReplacement(profile, credentials) {
+  const mode = profile.authMode ||
+    (profile.provider === "vertex" ? "adc"
+      : profile.provider === "bedrock" ? (credentials.apiKey ? "apiKey" : "aws")
+        : ["ollama", "compatible"].includes(profile.provider) ? "none" : "apiKey");
+  if (mode === "apiKey") return !!credentials.apiKey;
+  if (mode === "bearer") return !!credentials.bearerToken;
+  if (mode === "aws")
+    return !!credentials.accessKeyId && !!credentials.secretAccessKey;
+  if (mode === "serviceAccount") return !!credentials.serviceAccount;
+  return false;
+}
 function loopback(hostname) {
   const host = hostname.toLowerCase().replace(/\.$/, "");
   return (
@@ -424,7 +436,7 @@ class AIService {
     this.remember(result);
     return result;
   }
-  async backupCredentials(id, readCredentials = true) {
+  async backupCredentials(id, readCredentials = true, allowUnreadableReplacement = false) {
     const key = this.vaultId(id);
     const encryptedRollback = typeof this.vault.snapshot === "function" &&
       typeof this.vault.restore === "function";
@@ -435,9 +447,12 @@ class AIService {
     if (readCredentials || !encryptedRollback) {
       try { credentials = await this.credentials(id); }
       catch (error) {
-        if (error.code !== "SECURE_STORAGE_INSECURE" || !encryptedRollback)
+        if (!encryptedRollback || (
+          error.code !== "SECURE_STORAGE_INSECURE" &&
+          !(allowUnreadableReplacement && error.code === "SECURE_STORAGE_UNREADABLE")
+        ))
           throw error;
-        // An explicit replacement cannot retain a secret from unsafe ciphertext.
+        // A complete replacement cannot retain a secret from unreadable ciphertext.
       }
     }
     return { key, credentials, encryptedRollback, ciphertext };
@@ -483,7 +498,11 @@ class AIService {
         const clean = this.cleanCredentials(credentials);
         // Empty form fields are a metadata-only edit; an explicit {} clears.
         if (Object.keys(clean).length || !Object.keys(credentials).length) {
-          backup = await this.backupCredentials(profile.id, Object.keys(clean).length > 0);
+          backup = await this.backupCredentials(
+            profile.id,
+            Object.keys(clean).length > 0,
+            completeCredentialReplacement(profile, clean),
+          );
           expected = Object.keys(clean).length
             ? await this.vault.set(backup.key, { ...backup.credentials, ...clean })
             : await this.vault.delete(backup.key);

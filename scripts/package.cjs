@@ -78,6 +78,10 @@ function packageApp({
     const selected = String(identity || env.TABLELINE_SIGN_IDENTITY || "-").replace(/^Developer ID Application:\s*/, "");
     args.push(`--config.mac.identity=${selected}`, "--config.mac.notarize=false");
     if (selected === "-") {
+      // electron-builder otherwise skips even ad-hoc signing on pull requests.
+      // This override is confined to the explicit no-certificate build, after
+      // all signing credentials have been removed from the child environment.
+      builderEnv.CSC_FOR_PULL_REQUEST = "true";
       // Ad-hoc binaries have no Team ID; hardened library validation prevents
       // even Electron's framework from loading. Local CI packages never become
       // public release artifacts. Developer ID releases retain hardened runtime.
